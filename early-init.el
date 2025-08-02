@@ -1,84 +1,92 @@
-;;; -*- lexical-binding: t; -*-
-;;; -*- early-init.el: t; -*-
+;; Disable package.el completely
+; (setq package-enable-at-startup nil
+;       package--init-file-ensured t
+;       package-quickstart nil)
 
-;;; Commentary:
-;; This file is based on the minimal-emacs.d project by James Cherti.
-;; URL: https://github.com/jamescherti/minimal-emacs.d
-;; It incorporates extensive optimizations for a faster Emacs startup.
+(add-hook 'after-init-hook
+          (lambda ()
+            (setq gc-cons-threshold (* 2 1024 1024)  ; 16 MB
+                  gc-cons-percentage 0.1)))
+;; (setq debug-on-error t)
 
-;;; Code:
+;; Enable native compilation
+(setq native-comp-async-report-warnings-errors nil)
+(setq native-comp-deferred-compilation t)
 
-;; Prevent flash of unstyled modeline at startup
-(setq-default mode-line-format nil)
+;;fixed-native--compile-async-skip-p
+(defun fixed-native--compile-async-skip-p
+    (native--compile-async-skip-p file load selector)
+  (let* ((naive-elc-file (file-name-with-extension file "elc"))
+         (elc-file       (replace-regexp-in-string
+                          "\\.el\\.elc$" ".elc" naive-elc-file)))
+    (or (gethash elc-file comp--no-native-compile)
+        (funcall native--compile-async-skip-p file load selector))))
 
-;; Keep the original GC threshold value to restore it later.
-(defvar my/original-gc-cons-threshold gc-cons-threshold)
-;; Defer garbage collection during startup.
-(setq gc-cons-threshold most-positive-fixnum)
+(advice-add 'native--compile-async-skip-p
+            :around 'fixed-native--compile-async-skip-p)
 
-;; Defer UI elements for performance.
-(push '(tool-bar-lines . 0) default-frame-alist)
-(push '(menu-bar-lines . 0) default-frame-alist)
-(push '(vertical-scroll-bars) default-frame-alist)
-
-;; Inhibit frame resizing, which can be slow.
-(setq frame-inhibit-implied-resize t)
-(setq frame-resize-pixelwise t)
-
-;; Inhibit the startup screen and messages for a cleaner and faster start.
+;; Disable unwanted UI elements
 (setq inhibit-startup-screen t
-      inhibit-startup-echo-area-message user-login-name
-      inhibit-startup-buffer-menu t
-      inhibit-splash-screen t
+      inhibit-startup-message t
+      inhibit-startup-echo-area-message t
       initial-scratch-message nil
-      initial-buffer-choice nil)
+      warning-minimum-level :error
+      create-lockfiles nil
+      use-file-dialog nil
+      use-dialog-box nil
+      pop-up-windows nil
+      visible-bell nil
+      inhibit-splash-screen t)
 
-;; Disable bytecomp warning
-(setq byte-compile-warnings nil)
+;; Major Defaults
+(setq fast-but-imprecise-scrolling 1
+      pixel-scroll-precision-mode t)
 
-;; Start in fundamental-mode to avoid loading other major modes.
-(setq initial-major-mode 'fundamental-mode)
+(scroll-bar-mode -1)        ; Disable visible scrollbar
+(tool-bar-mode -1)          ; Disable the toolbar
+(tooltip-mode -1)           ; Disable tooltips
+(set-fringe-mode 10)        ; Give some breathing room
+(menu-bar-mode -1)            ; Disable the menu bar
+(save-place-mode 1)
+(column-number-mode)
+(global-auto-revert-mode t)  ;; Automatically show changes if the file has changed
+(defalias 'yes-or-no-p 'y-or-n-p)
+(auto-save-visited-mode t)
+(delete-selection-mode 1)
 
-;; Make startup quieter.
-(setq ring-bell-function 'ignore)
-(setq visible-bell nil)
+;; Remove messages from the *Messages* buffer.
+(setq-default message-log-max nil)
 
-;; Using plists for deserialization
-(setenv "LSP_USE_PLISTS" "true")
+;; ;; Define a function to enable line numbers
+;; (defun my/enable-line-numbers ()
+;;   "Enable line numbers in supported modes."
+;;   (when (derived-mode-p 'text-mode 'prog-mode 'emacs-lisp-mode)
+;;     (display-line-numbers-mode 1)))
 
-;; Disable package.el at startup; we'll initialize it manually in init.el.
-(setq package-enable-at-startup nil)
+;; ;; Add the function to the appropriate hooks
+;; (add-hook 'text-mode-hook #'my/enable-line-numbers)
+;; (add-hook 'prog-mode-hook #'my/enable-line-numbers)
+;; (add-hook 'emacs-lisp-mode-hook #'my/enable-line-numbers)
 
-;; Temporarily disable file-name-handler-alist. This is a significant
-;; optimization as it is consulted on every `load` and `require`.
-;; A hook will restore it after startup.
-(defvar my/file-name-handler-alist-original file-name-handler-alist)
-(setq file-name-handler-alist nil)
+;; ;; Ensure relative line numbers are not enabled
+;; (setq display-line-numbers-type 't);; Faster rendering
 
-(add-hook 'emacs-startup-hook
-          (defun my/restore-startup-settings ()
-            "Restore settings that were deferred during startup."
-            ;; Restore the GC threshold to a sane value for interactive use.
-            (setq gc-cons-threshold (* 100 1024 1024)) ; 100mb
-            ;; Restore the file name handler alist.
-            (setq file-name-handler-alist my/file-name-handler-alist-original)
-            (setq read-process-output-max (* 2 1024 1024)) ;; 2mb
-            ;; Restore the modeline.
-            (setq-default mode-line-format (default-value 'mode-line-format)))
-          100) ; Run with high priority.
+(setq bidi-paragraph-direction 'left-to-right
+      bidi-inhibit-bpa t
+      redisplay-skip-fontification-on-input t
+      inhibit-compacting-font-caches t)
+                                        
+;; Native compilation settings
+(setq native-comp-deferred-compilation t
+      native-comp-async-report-warnings-errors nil
+      native-comp-jit-compilation t
+      comp-speed 3
+      native-compile-target-directory (expand-file-name "eln-cache/" user-emacs-directory))
 
-;; Kill all special buffers on startup
-(defun kill-special-buffers-on-startup ()
-  "Kill all special buffers that are not visiting a file on startup."
-  (interactive)
-  (dolist (buffer (buffer-list))
-    (let ((buffer-name (buffer-name buffer)))
-      (when (and (buffer-live-p buffer)
-                 (string-prefix-p "*" buffer-name)
-                 (not (buffer-file-name buffer)))
-        (with-current-buffer buffer
-          (kill-buffer (current-buffer)))))))
+; Kill these buffers on startup.
+(kill-buffer "*Messages*")
+(kill-buffer "*scratch*")
 
-;; (add-hook 'emacs-startup-hook #'kill-special-buffers-on-startup)
+;(kill-buffer "*Async-native-compile-log*")
 
-;;; early-init.el ends here
+

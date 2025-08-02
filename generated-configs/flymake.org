@@ -1,0 +1,97 @@
+** Flymake
+*** Core Configuration
+#+begin_src emacs-lisp
+(use-package flymake
+  :ensure nil
+  :diminish flymake-mode
+  :hook (eglot-managed-mode . flymake-mode)
+  :custom
+  ;; Performance optimizations
+  (flymake-no-changes-timeout 0.5)
+  (flymake-start-on-save-buffer t)
+  (flymake-suppress-zero-counters t)
+  (flymake-wrap-around nil)
+  
+  :config
+  ;; Gruvbox dark theme faces
+  (custom-set-faces
+   '(flymake-error ((t (:underline (:color "#fb4934" :style wave)))))
+   '(flymake-warning ((t (:underline (:color "#fabd2f" :style wave)))))
+   '(flymake-note ((t (:underline (:color "#83a598" :style wave))))))
+  
+  ;; Eldoc integration for flymake diagnostics
+  (defun flymake-eldoc-function (callback)
+    "Eldoc function for flymake diagnostics."
+    (when-let* ((diags (flymake-diagnostics (point)))
+                (diag (car diags)))
+      (funcall callback
+               (format "[%s] %s"
+                       (propertize
+                        (pcase (flymake-diagnostic-type diag)
+                          ('error "ERROR")
+                          ('warning "WARN")
+                          ('note "NOTE")
+                          (_ "INFO"))
+                        'face
+                        (pcase (flymake-diagnostic-type diag)
+                          ('error '(:foreground "#fb4934" :weight bold))
+                          ('warning '(:foreground "#fabd2f" :weight bold))
+                          ('note '(:foreground "#83a598" :weight bold))
+                          (_ '(:foreground "#ebdbb2" :weight bold))))
+                       (flymake-diagnostic-text diag)))))
+  
+  (add-hook 'flymake-mode-hook
+            (lambda ()
+              (add-hook 'eldoc-documentation-functions
+                        #'flymake-eldoc-function nil t)))
+  
+  :bind (("C-c f n" . flymake-goto-next-error)
+         ("C-c f p" . flymake-goto-prev-error)
+         ("C-c f l" . flymake-show-buffer-diagnostics)
+         ("C-c f d" . flymake-show-project-diagnostics)))
+#+end_src
+
+*** Doom Modeline Integration
+#+begin_src emacs-lisp
+(with-eval-after-load 'doom-modeline
+  ;; Configure doom-modeline for detailed flymake display
+  (setq doom-modeline-checker-simple-format nil)
+  
+  ;; Gruvbox faces for doom-modeline checker
+  (custom-set-faces
+   '(doom-modeline-checker-error ((t (:foreground "#fb4934" :weight bold))))
+   '(doom-modeline-checker-warning ((t (:foreground "#fabd2f" :weight bold))))
+   '(doom-modeline-checker-info ((t (:foreground "#83a598" :weight bold))))
+   '(doom-modeline-checker-success ((t (:foreground "#b8bb26" :weight bold))))))
+#+end_src
+
+*** Flymake Diagnostics At Point
+#+begin_src emacs-lisp
+(use-package flymake-diagnostic-at-point
+  :after flymake
+  :hook (flymake-mode . flymake-diagnostic-at-point-mode)
+  :custom
+  (flymake-diagnostic-at-point-timer-delay 0.5)
+  (flymake-diagnostic-at-point-error-prefix "➤ ")
+  (flymake-diagnostic-at-point-warning-prefix "⚠ ")
+  
+  :config
+  ;; Custom minibuffer display with gruvbox theming
+  (defun flymake-diagnostic-at-point-display-minibuffer (text)
+    "Display flymake diagnostic TEXT in minibuffer with gruvbox colors."
+    (when (and text (stringp text) (> (length text) 0))
+      (let* ((diags (flymake-diagnostics (point)))
+             (diag (car diags))
+             (diagnostic-type (when diag (flymake-diagnostic-type diag))))
+        (message "%s"
+                 (propertize (string-trim text)
+                             'face
+                             (pcase diagnostic-type
+                               ('error '(:foreground "#fb4934" :background "#3c1f1e"))
+                               ('warning '(:foreground "#fabd2f" :background "#473d29"))
+                               ('note '(:foreground "#83a598" :background "#0d1011"))
+                               (_ '(:foreground "#ebdbb2" :background "#32302f"))))))))
+  
+  (setq flymake-diagnostic-at-point-display-diagnostic-function
+        'flymake-diagnostic-at-point-display-minibuffer))
+#+end_src

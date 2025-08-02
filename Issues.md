@@ -1,0 +1,5 @@
+- [ ] Make corfu completions (popups in buffer) are navigated by TAB and shift-TAB and pressing Return enters the selections
+- [ ] Completion popups appear in minibu
+- [ ] Check the order of packages for compatability
+- [ ] When typing a possible directory name don't close the minibuffer
+- [ ] <el does not create emacs-lisp src code blocks in org-mode

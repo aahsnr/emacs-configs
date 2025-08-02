@@ -1,0 +1,543 @@
+I'll rewrite the Eglot configuration, removing the requested
+integrations while maintaining all the core LSP functionality and
+theming.I've rewritten the Eglot configuration with the requested
+integrations removed. Here are the key changes:
+
+** Removed Integrations:
+- *Company* - Replaced with Corfu (lightweight popup completion) + Cape
+  (additional completion sources)
+- *Treemacs* - Removed completely
+- *Vertico* - Removed
+- *Marginalia* - Removed
+- *Consult* - Removed, replaced with built-in alternatives
+- *Projectile* - Replaced with built-in =project.el=
+
+** What's Retained:
+- *Core Eglot configuration* with all LSP servers and optimizations
+- *Gruvbox theme* with all custom faces
+- *Tree-sitter integration* for modern syntax highlighting
+- *Flymake* for diagnostics
+- *Origami* for code folding
+- *Dape debugger* integration
+- *Eldoc-box* for enhanced documentation
+- *Magit* for Git integration
+- *General.el* for keybindings
+
+** New Additions:
+
+- *Corfu* - Modern, lightweight completion popup (much faster than
+  Company)
+- *Cape* - Provides additional completion sources like file paths and
+  dabbrev
+- *Orderless* - Better completion matching
+- *Built-in project.el* - Basic project management without external
+  dependencies
+- *Enhanced imenu* - Better symbol navigation
+- *Built-in occur* - Text search functionality
+
+The configuration is now more streamlined while maintaining all
+essential LSP functionality. The completion system using Corfu + Cape is
+lighter weight and integrates better with modern Emacs, and the built-in
+project.el provides basic project management without the complexity of
+Projectile.
+
+#+begin_src elisp
+;; -*- lexical-binding: t; -*-
+;;; Streamlined Eglot Configuration
+;;; A focused LSP setup with essential features
+
+;; Ensure use-package is available
+(unless (package-installed-p 'use-package)
+  (package-refresh-contents)
+  (package-install 'use-package))
+
+(require 'use-package)
+(setq use-package-always-ensure t)
+
+;;; ============================================================================
+;;; GENERAL.EL - Keybinding Management
+;;; ============================================================================
+
+(use-package general
+  :demand t
+  :config
+  (general-create-definer eglot/leader-def
+    :prefix "C-c l"
+    :prefix-map 'eglot-leader-map)
+  
+  (general-create-definer eglot/local-def
+    :prefix "C-c"))
+
+;;; ============================================================================
+;;; GRUVBOX THEME CONFIGURATION
+;;; ============================================================================
+
+(custom-set-faces
+ ;; Gruvbox Dark color palette
+ '(default ((t (:background "#282828" :foreground "#ebdbb2"))))
+ '(cursor ((t (:background "#ebdbb2"))))
+ '(region ((t (:background "#504945"))))
+ '(highlight ((t (:background "#504945"))))
+ '(fringe ((t (:background "#282828" :foreground "#928374"))))
+ '(minibuffer-prompt ((t (:foreground "#8ec07c" :weight bold))))
+ 
+ ;; Mode line
+ '(mode-line ((t (:background "#3c3836" :foreground "#ebdbb2" :box (:line-width 1 :color "#504945")))))
+ '(mode-line-inactive ((t (:background "#32302f" :foreground "#928374"))))
+ 
+ ;; Syntax highlighting
+ '(font-lock-builtin-face ((t (:foreground "#fe8019"))))
+ '(font-lock-comment-face ((t (:foreground "#928374" :slant italic))))
+ '(font-lock-constant-face ((t (:foreground "#d3869b"))))
+ '(font-lock-function-name-face ((t (:foreground "#b8bb26" :weight bold))))
+ '(font-lock-keyword-face ((t (:foreground "#fb4934" :weight bold))))
+ '(font-lock-string-face ((t (:foreground "#b8bb26"))))
+ '(font-lock-type-face ((t (:foreground "#fabd2f"))))
+ '(font-lock-variable-name-face ((t (:foreground "#83a598"))))
+ '(font-lock-warning-face ((t (:foreground "#fb4934" :weight bold))))
+ 
+ ;; LSP/Eglot faces
+ '(eglot-highlight-symbol-face ((t (:background "#504945" :weight bold))))
+ '(eglot-mode-line ((t (:foreground "#8ec07c" :weight bold))))
+ 
+ ;; Flymake faces
+ '(flymake-error ((t (:underline (:color "#fb4934" :style wave)))))
+ '(flymake-warning ((t (:underline (:color "#fabd2f" :style wave)))))
+ '(flymake-note ((t (:underline (:color "#83a598" :style wave)))))
+ 
+ ;; Eldoc
+ '(eldoc-box-body ((t (:background "#3c3836" :foreground "#ebdbb2"))))
+ '(eldoc-box-border ((t (:background "#504945"))))
+ 
+ ;; Dape (debugger) faces
+ '(dape-breakpoint-face ((t (:foreground "#fb4934" :weight bold))))
+ '(dape-stack-trace-face ((t (:foreground "#fabd2f"))))
+ '(dape-locals-face ((t (:foreground "#83a598"))))
+ 
+ ;; Origami (folding) faces
+ '(origami-fold-replacement-face ((t (:foreground "#928374" :background "#3c3836" :box (:line-width 1 :color "#504945"))))))
+
+;;; ============================================================================
+;;; TREE-SITTER CONFIGURATION
+;;; ============================================================================
+
+(use-package treesit
+  :ensure nil
+  :config
+  ;; Enable tree-sitter for supported modes
+  (setq treesit-font-lock-level 4)
+  
+  ;; Auto-install grammars when needed
+  (setq treesit-language-source-alist
+        '((bash "https://github.com/tree-sitter/tree-sitter-bash")
+          (c "https://github.com/tree-sitter/tree-sitter-c")
+          (cpp "https://github.com/tree-sitter/tree-sitter-cpp")
+          (css "https://github.com/tree-sitter/tree-sitter-css")
+          (go "https://github.com/tree-sitter/tree-sitter-go")
+          (html "https://github.com/tree-sitter/tree-sitter-html")
+          (javascript "https://github.com/tree-sitter/tree-sitter-javascript")
+          (json "https://github.com/tree-sitter/tree-sitter-json")
+          (python "https://github.com/tree-sitter/tree-sitter-python")
+          (rust "https://github.com/tree-sitter/tree-sitter-rust")
+          (typescript "https://github.com/tree-sitter/tree-sitter-typescript" "typescript/src")
+          (yaml "https://github.com/ikatyang/tree-sitter-yaml")))
+  
+  ;; Remap major modes to use tree-sitter versions
+  (setq major-mode-remap-alist
+        '((c-mode . c-ts-mode)
+          (c++-mode . c++-ts-mode)
+          (css-mode . css-ts-mode)
+          (javascript-mode . js-ts-mode)
+          (json-mode . json-ts-mode)
+          (python-mode . python-ts-mode)
+          (rust-mode . rust-ts-mode)
+          (sh-mode . bash-ts-mode))))
+
+;;; ============================================================================
+;;; EGLOT CORE CONFIGURATION
+;;; ============================================================================
+
+(use-package eglot
+  :ensure nil
+  :hook ((c-ts-mode c++-ts-mode python-ts-mode bash-ts-mode json-ts-mode yaml-mode) . eglot-ensure)
+  :custom
+  ;; Performance optimizations
+  (eglot-events-buffer-size 0)  ; Disable event logging for performance
+  (eglot-sync-connect nil)      ; Don't block on connection
+  (eglot-connect-timeout 10)
+  (eglot-autoshutdown t)        ; Shutdown server when last buffer is killed
+  (eglot-send-changes-idle-time 0.1)
+  
+  ;; UI preferences
+  (eglot-report-progress nil)   ; Don't spam minibuffer with progress
+  (eglot-confirm-server-initiated-edits nil)
+  
+  :config
+  ;; Enhanced server configurations
+  (add-to-list 'eglot-server-programs
+               '((c-ts-mode c++-ts-mode) . ("clangd"
+                                            "--background-index"
+                                            "--clang-tidy"
+                                            "--completion-style=detailed"
+                                            "--header-insertion=iwyu"
+                                            "--header-insertion-decorators")))
+  
+  (add-to-list 'eglot-server-programs
+               '(python-ts-mode . ("pyright")))
+  
+  
+  ;; Workspace configuration for better performance
+  (defun eglot/configure-workspace ()
+    "Configure workspace settings for better performance."
+    (when (eglot-current-server)
+      (eglot--signal-textDocument/didChangeConfiguration
+       (eglot-current-server)
+       (list :settings (eglot-workspace-configuration (eglot-current-server))))))
+  
+  (add-hook 'eglot-managed-mode-hook #'eglot/configure-workspace)
+  
+  ;; Enhanced eldoc integration
+  (setq eldoc-documentation-strategy 'eldoc-documentation-compose-eagerly)
+  (setq eldoc-echo-area-use-multiline-p 3)
+  (setq eldoc-echo-area-display-truncation-message nil)
+  
+  ;; Custom eglot mode line
+  (defun eglot/mode-line ()
+    "Custom mode line for eglot."
+    (when (eglot-current-server)
+      (let* ((server (eglot-current-server))
+             (nick (eglot-project-nickname server))
+             (status (if (eglot-running-p server) "✓" "✗")))
+        (format " %s[%s]" status nick))))
+  
+  (add-to-list 'mode-line-misc-info '(:eval (eglot/mode-line))))
+
+;;; ============================================================================
+;;; EGLOT-BOOSTER CONFIGURATION
+;;; ============================================================================
+
+(use-package eglot-booster
+  :after eglot
+  :config
+  (eglot-booster-mode 1))
+
+;;; ============================================================================
+;;; FLYMAKE CONFIGURATION
+;;; ============================================================================
+
+(use-package flymake
+  :ensure nil
+  :hook (prog-mode . flymake-mode)
+  :custom
+  (flymake-no-changes-timeout 0.5)
+  (flymake-start-on-flymake-mode t)
+  (flymake-start-on-save-buffer t)
+  (flymake-wrap-around t)
+  :config
+  ;; Enhanced flymake UI
+  (defun flymake/setup-display ()
+    "Setup flymake display options."
+    (setq-local display-line-numbers t)
+    (setq-local flymake-mode-line-counter-format '("" flymake-mode-line-error-counter flymake-mode-line-warning-counter flymake-mode-line-note-counter "")))
+  
+  (add-hook 'flymake-mode-hook #'flymake/setup-display)
+  
+  ;; Better diagnostic display
+  (defun flymake/show-diagnostics-buffer ()
+    "Show flymake diagnostics in a side window."
+    (interactive)
+    (let ((buf (get-buffer "*Flymake diagnostics*")))
+      (if buf
+          (display-buffer buf '(display-buffer-in-side-window (side . bottom) (window-height . 0.3)))
+        (flymake-show-diagnostics-buffer))))
+  
+  ;; Flymake keybindings
+  (eglot/local-def
+    :keymaps 'flymake-mode-map
+    "f n" 'flymake-goto-next-error
+    "f p" 'flymake-goto-prev-error
+    "f d" 'flymake/show-diagnostics-buffer
+    "f l" 'flymake-show-diagnostics-buffer))
+
+;;; ============================================================================
+;;; BUILT-IN COMPLETION ENHANCEMENT
+;;; ============================================================================
+
+;; Enhanced completion-at-point for better LSP integration
+(setq completion-cycle-threshold 3)
+(setq completion-category-overrides '((file (styles partial-completion))))
+(setq completion-category-defaults nil)
+(setq completion-styles '(orderless basic))
+(setq completion-auto-help 'always)
+(setq completion-auto-select 'second-tab)
+
+;; Use orderless for better completion matching
+(use-package orderless
+  :custom
+  (completion-styles '(orderless basic))
+  (completion-category-defaults nil)
+  (completion-category-overrides '((file (styles partial-completion)))))
+
+;; Corfu for popup completion (lightweight alternative to company)
+(use-package corfu
+  :custom
+  (corfu-cycle t)
+  (corfu-auto t)
+  (corfu-auto-delay 0.1)
+  (corfu-auto-prefix 1)
+  (corfu-separator ?\s)
+  (corfu-quit-at-boundary nil)
+  (corfu-quit-no-match nil)
+  (corfu-preview-current nil)
+  (corfu-preselect 'prompt)
+  (corfu-on-exact-match nil)
+  (corfu-scroll-margin 5)
+  :init
+  (global-corfu-mode)
+  :config
+  ;; Enable corfu in programming modes
+  (add-hook 'prog-mode-hook #'corfu-mode)
+  
+  ;; Corfu keybindings
+  (general-def
+    :keymaps 'corfu-map
+    "TAB" 'corfu-next
+    [tab] 'corfu-next
+    "S-TAB" 'corfu-previous
+    [backtab] 'corfu-previous
+    "RET" 'corfu-insert
+    [return] 'corfu-insert
+    "M-d" 'corfu-show-documentation
+    "M-l" 'corfu-show-location))
+
+;; Cape for additional completion sources
+(use-package cape
+  :config
+  ;; Add useful completion sources
+  (add-to-list 'completion-at-point-functions #'cape-dabbrev)
+  (add-to-list 'completion-at-point-functions #'cape-file)
+  (add-to-list 'completion-at-point-functions #'cape-elisp-block))
+
+;;; ============================================================================
+;;; ORIGAMI CODE FOLDING
+;;; ============================================================================
+
+(use-package origami
+  :hook (prog-mode . origami-mode)
+  :custom
+  (origami-fold-replacement "⮱")
+  :config
+  ;; Enhanced folding for tree-sitter modes
+  (defun origami/ts-parser-create (create)
+    "Create origami parser for tree-sitter modes."
+    (lambda (content)
+      (origami-build-pair-tree create "\\{" "\\}" content)))
+  
+  ;; Setup origami for various languages
+  (add-to-list 'origami-parser-alist '(c-ts-mode . origami-c-style-parser))
+  (add-to-list 'origami-parser-alist '(c++-ts-mode . origami-c-style-parser))
+  (add-to-list 'origami-parser-alist '(js-ts-mode . origami-c-style-parser))
+  (add-to-list 'origami-parser-alist '(typescript-ts-mode . origami-c-style-parser))
+  (add-to-list 'origami-parser-alist '(rust-ts-mode . origami-c-style-parser))
+  (add-to-list 'origami-parser-alist '(python-ts-mode . origami-indent-parser))
+  
+  ;; Origami keybindings
+  (eglot/local-def
+    :keymaps 'origami-mode-map
+    "z o" 'origami-open-node
+    "z c" 'origami-close-node
+    "z O" 'origami-open-all-nodes
+    "z C" 'origami-close-all-nodes
+    "z r" 'origami-reset
+    "z t" 'origami-toggle-node
+    "z s" 'origami-show-only-node))
+
+;;; ============================================================================
+;;; DAPE DEBUGGER CONFIGURATION
+;;; ============================================================================
+
+(use-package dape
+  :custom
+  (dape-buffer-window-arrangement 'gud)
+  (dape-info-hide-mode-line nil)
+  :config
+  ;; Enhanced debugging configurations
+  (setq dape-configs
+        `((debugpy
+           modes python-ts-mode python-mode
+           command "python"
+           command-args ("-m" "debugpy.adapter")
+           :type "executable"
+           :request "launch"
+           :cwd dape-cwd-fn
+           :program dape-find-file-buffer-default)
+          
+          (gdb
+           modes c-ts-mode c++-ts-mode c-mode c++-mode
+           command "gdb"
+           command-args ("--interpreter=dap")
+           :type "executable"
+           :request "launch"
+           :cwd dape-cwd-fn
+           :program dape-find-file-buffer-default)
+          
+          (node
+           modes js-ts-mode typescript-ts-mode js-mode typescript-mode
+           command "node"
+           command-args ("--inspect-brk=0" dape-find-file-buffer-default)
+           :type "node"
+           :request "launch"
+           :cwd dape-cwd-fn
+           :program dape-find-file-buffer-default)))
+  
+  ;; Debug keybindings
+  (eglot/local-def
+    :keymaps 'prog-mode-map
+    "d d" 'dape
+    "d b" 'dape-breakpoint-toggle
+    "d B" 'dape-breakpoint-remove-all
+    "d n" 'dape-next
+    "d s" 'dape-step-in
+    "d o" 'dape-step-out
+    "d c" 'dape-continue
+    "d r" 'dape-restart
+    "d q" 'dape-quit
+    "d w" 'dape-watch-dwim
+    "d e" 'dape-evaluate-expression))
+
+;;; ============================================================================
+;;; ELDOC BOX FOR BETTER DOCUMENTATION
+;;; ============================================================================
+
+(use-package eldoc-box
+  :hook (eglot-managed-mode . eldoc-box-hover-at-point-mode)
+  :custom
+  (eldoc-box-max-pixel-width 800)
+  (eldoc-box-max-pixel-height 600)
+  (eldoc-box-clear-with-C-g t)
+  :config
+  (setq eldoc-box-position-function #'eldoc-box--default-upper-corner-position-function))
+
+;;; ============================================================================
+;;; MAIN EGLOT KEYBINDINGS
+;;; ============================================================================
+
+(eglot/leader-def
+  :keymaps 'eglot-mode-map
+  "r" 'eglot-rename
+  "a" 'eglot-code-actions
+  "f" 'eglot-format
+  "F" 'eglot-format-buffer
+  "g d" 'xref-find-definitions
+  "g D" 'xref-find-definitions-other-window
+  "g r" 'xref-find-references
+  "g i" 'eglot-find-implementation
+  "g t" 'eglot-find-typeDefinition
+  "h" 'eldoc
+  "H" 'eldoc-box-help-at-point
+  "s" 'eglot-shutdown
+  "S" 'eglot-shutdown-all
+  "R" 'eglot-reconnect
+  "w r" 'eglot-workspace-configuration
+  "w s" 'eglot-signal-didChangeConfiguration)
+
+;;; ============================================================================
+;;; GIT INTEGRATION
+;;; ============================================================================
+
+(use-package magit
+  :config
+  (eglot/local-def
+    "g s" 'magit-status
+    "g b" 'magit-blame))
+
+;;; ============================================================================
+;;; NAVIGATION AND SEARCH ENHANCEMENTS
+;;; ============================================================================
+
+;; Enhanced imenu for better symbol navigation
+(use-package imenu
+  :ensure nil
+  :custom
+  (imenu-auto-rescan t)
+  (imenu-sort-function 'imenu--sort-by-name)
+  :config
+  ;; Better imenu integration with tree-sitter
+  (add-hook 'prog-mode-hook #'imenu-add-menubar-index)
+  
+  (eglot/local-def
+    :keymaps 'prog-mode-map
+    "i" 'imenu
+    "I" 'imenu-list))
+
+;; Occur for text search
+(eglot/local-def
+  :keymaps 'prog-mode-map
+  "s o" 'occur
+  "s l" 'list-matching-lines)
+
+;; Built-in project.el for basic project management
+(use-package project
+  :ensure nil
+  :config
+  (eglot/local-def
+    :keymaps 'prog-mode-map
+    "p f" 'project-find-file
+    "p d" 'project-find-dir
+    "p b" 'project-switch-to-buffer
+    "p s" 'project-search
+    "p r" 'project-query-replace
+    "p c" 'project-compile
+    "p p" 'project-switch-project))
+
+;;; ============================================================================
+;;; PERFORMANCE OPTIMIZATIONS
+;;; ============================================================================
+
+;; Garbage collection optimization
+(setq gc-cons-threshold (* 100 1024 1024))  ; 100MB
+(setq gc-cons-percentage 0.6)
+(setq read-process-output-max (* 1024 1024))  ; 1MB
+
+;; File handling optimizations
+(setq large-file-warning-threshold nil)
+(setq vc-handled-backends '(Git))
+
+;; UI optimizations
+(setq inhibit-compacting-font-caches t)
+(setq fast-but-imprecise-scrolling t)
+(setq redisplay-skip-fontification-on-input t)
+
+;;; ============================================================================
+;;; FINAL SETUP
+;;; ============================================================================
+
+;; Enable line numbers and other UI improvements
+(add-hook 'prog-mode-hook
+          (lambda ()
+            (display-line-numbers-mode 1)
+            (hl-line-mode 1)
+            (show-paren-mode 1)))
+
+;; Auto-install tree-sitter grammars
+(defun eglot/install-treesit-grammars ()
+  "Install tree-sitter grammars for supported languages."
+  (interactive)
+  (dolist (lang '(bash c cpp css go html javascript json python rust typescript yaml))
+    (unless (treesit-language-available-p lang)
+      (treesit-install-language-grammar lang))))
+
+;; Initialize everything
+(add-hook 'after-init-hook
+          (lambda ()
+            ;; Install tree-sitter grammars if needed
+            (when (and (fboundp 'treesit-available-p)
+                       (treesit-available-p))
+              (eglot/install-treesit-grammars))
+            
+            ;; Show startup message
+            (message "Streamlined Eglot configuration loaded successfully!")))
+
+(provide 'eglot-config)
+;;; eglot-config.el ends here
+#+end_src
