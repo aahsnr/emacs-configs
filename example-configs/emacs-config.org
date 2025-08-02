@@ -903,10 +903,10 @@ Install =luacheck= from your Linux distro's repositories for flycheck to work co
 
 #+begin_src emacs-lisp
 (ar/leader-keys
-  "SPC" '(execute-extended-command :wk "M-x")
-  "f f" '(find-file :wk "Find file")
-  "/" '(evilnc-comment-or-uncomment-lines :wk "Comment lines")
-  "u" '(universal-argument :wk "Universal argument"))
+ "SPC" '(execute-extended-command :wk "M-x")
+ "f f" '(find-file :wk "Find file")
+ "/" '(evilnc-comment-or-uncomment-lines :wk "Comment lines")
+ "u" '(universal-argument :wk "Universal argument"))
 #+end_src
 
 ** Bookmarks/Buffers

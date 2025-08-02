@@ -1,0 +1,434 @@
+#+TITLE: Emacs Configuration
+#+AUTHOR: Ahsanur Rahman
+#+STARTUP: overview
+#+PROPERTY: :tangle yes :lexical yes
+
+* Core Emacs and Package Management
+** set user 
+#+begin_src emacs-lisp
+(setq inhibit-startup-screen t
+      user-full-name "Ahsanur Rahman"
+      user-mail-address "ahsanur041@proton.me")
+#+end_src
+
+
+** Performance Tweaks
+#+begin_src emacs-lisp
+(setq gc-cons-threshold (* 100 1024 1024)   ; 100 MB GC threshold
+      read-process-output-max (* 1024 1024) ; 1 MB read process output max
+      native-comp-async-report-warnings-errors 'silent) ; Hide native-comp warnings
+#+end_src
+
+** Display Startup Time
+#+begin_src emacs-lisp
+(defun ar/display-startup-time ()
+  (message "Emacs loaded in %s with %d garbage collections."
+           (format "%.2f seconds"
+                   (float-time
+                     (time-subtract after-init-time before-init-time)))
+           gcs-done))
+
+(add-hook 'emacs-startup-hook #'ar/display-startup-time)
+#+end_src
+
+
+** Minimal UI Shell
+#+begin_src emacs-lisp
+(tool-bar-mode -1)
+(menu-bar-mode -1)
+(scroll-bar-mode -1)
+(setq-default frame-title-format "%b - Emacs"
+              ring-bell-function 'ignore
+              visible-bell nil
+              cursor-in-non-selected-windows nil
+              line-spacing 0.0
+              column-number-mode t)
+#+end_src
+
+
+** Package Management
+#+begin_src emacs-lisp
+(require 'package)
+
+(setq package-archives '(("gnu" . "https://elpa.gnu.org/packages/")
+                         ("nongnu" . "https://elpa.nongnu.org/nongnu/")
+                         ("melpa" . "https://melpa.org/packages/")))
+(package-initialize)
+(unless package-archive-contents
+  (package-refresh-contents))
+#+end_src
+
+
+** Boostrap use package
+#+begin_src emacs-lisp
+(require 'use-package)
+(setq use-package-always-ensure t
+      use-package-always-defer t
+      use-package-expand-minimally t)
+#+end_src
+
+
+** Quality-of-life Settings
+#+begin_src emacs-lisp
+(setq-default show-trailing-whitespace t)
+(delete-selection-mode 1)
+(electric-pair-mode 1)
+(recentf-mode 1)
+(savehist-mode 1)
+(global-hl-line-mode 1)
+(global-visual-line-mode 1)
+#+end_src
+
+
+** Reload Configuration
+#+begin_src emacs-lisp
+(defun ar/reload-config ()
+  "Reload the Emacs configuration."
+  (interactive)
+  ;; Assuming config.org is the main configuration file and this config.el is tangled from it.
+  ;; If config.el is the primary config, change to: (load-file (expand-file-name "config.el" user-emacs-directory))
+  (let ((config-file (expand-file-name "config.org" user-emacs-directory)))
+    (if (file-exists-p config-file)
+        (progn
+          (message "Reloading Emacs configuration from config.org...")
+          (org-babel-load-file config-file)
+          (message "Configuration reloaded successfully!"))
+      (error "Configuration file %s not found" config-file))))
+
+;; Bind ar/reload-config globally
+(global-set-key (kbd "C-c r") 'ar/reload-config)
+#+end_src
+
+* General Keybindings
+#+begin_src emacs-lisp
+(global-set-key (kbd "<escape>") 'keyboard-escape-quit)
+
+(use-package general
+  :after evil
+  :config
+  (general-create-definer ar/global-leader
+    :keymaps '(normal insert visual emacs)
+    :prefix "SPC"
+    :global-prefix "C-SPC")
+
+  (ar/global-leader
+   ;; Core
+   "SPC" '(execute-extended-command :wk "M-x")
+   "q q" '(save-buffers-kill-terminal :wk "Quit Emacs")
+   "q r" '(ar/reload-config :wk "Reload Config")))
+#+end_src
+
+* UI & Theming
+** Line Numbers 
+#+begin_src emacs-lisp
+(global-display-line-numbers-mode -1)
+(setq-default display-line-numbers-grow-only t
+              display-line-numbers-width 2)
+
+;; Enable line numbers for some modes
+(dolist (mode '(prog-mode-hook
+                conf-mode-hook))
+  (add-hook mode (lambda () (display-line-numbers-mode t))))
+#+end_src
+
+** Fonts
+#+begin_src emacs-lisp
+(defun ar/set-font-faces ()
+  "Set all font faces for the current frame."
+  ;; Set default, fixed-pitch, and variable-pitch faces to JetBrainsMono Nerd Font
+  ;; Height 145 corresponds to 14.5pt. Adjust as needed.
+  (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font" :height 145 :weight 'medium)
+  (set-face-attribute 'fixed-pitch nil :font "JetBrainsMono Nerd Font" :height 145 :weight 'medium)
+  (set-face-attribute 'variable-pitch nil :font "JetBrainsMono Nerd Font" :height 145 :weight 'medium)
+  ;; Apply italic slant to comments and keywords for visual distinction
+  (set-face-attribute 'font-lock-comment-face nil :slant 'italic)
+  (set-face-attribute 'font-lock-keyword-face nil :slant 'italic)
+  (set-language-environment "UTF-8")
+  (set-fontset-font t 'unicode "JetBrainsMono Nerd Font" nil 'append)
+  (set-fontset-font t 'symbol "JetBrainsMono Nerd Font" nil 'append))
+
+
+(if (daemonp)
+    (add-hook 'after-make-frame-functions
+              (lambda (frame) (with-selected-frame frame (ar/set-font-faces))))
+  (ar/set-font-faces))(setq font-lock-maximum-decoration t) ; For better syntax highlighting
+#+end_src
+
+** Theming
+#+begin_src emacs-lisp
+(use-package catppuccin-theme
+    :demand t
+    :config
+    (setq catppuccin-flavor 'macchiato
+      catppuccin-highlight-matches t
+      catppuccin-italic-comments t
+      catppuccin-italic-variables t
+      catppuccin-italic-functions t
+      catppuccin-italic-keywords t)
+    (load-theme 'catppuccin t))
+#+end_src
+
+** Solaire Mode
+#+begin_src emacs-lisp
+(use-package solaire-mode
+  :init (solaire-global-mode)
+  :config
+  ;; Differentiate popups from "real" buffers
+  (add-hook 'completion-list-mode-hook #'solaire-mode)
+  (add-hook 'which-key-mode-hook #'solaire-mode)
+  (add-hook 'help-mode-hook #'solaire-mode)
+  (add-hook 'info-mode-hook #'solaire-mode)
+  (add-hook 'org-src-mode-hook #'solaire-mode)
+  (advice-add 'vertico--display-candidates :after
+              (lambda (&rest _)
+                (when (minibufferp)
+                  (with-selected-window (minibuffer-window) (solaire-mode +1))))))
+#+end_src
+
+** Nerd Icons
+#+begin_src emacs-lisp
+(use-package nerd-icons
+  :demand t
+  :custom
+  (nerd-icons-font-family "JetBrainsMono Nerd Font")
+  (nerd-icons-color-icons t))
+#+end_src
+
+** Doom Modeline
+#+begin_src emacs-lisp
+(use-package doom-modeline
+  :demand t
+  :init (doom-modeline-mode 1)
+  :custom
+  (doom-modeline-height 28)
+  (doom-modeline-icon t)
+  (doom-modeline-major-mode-icon t)
+  (doom-modeline-buffer-file-name-style 'truncate-upto-project)
+  (doom-modeline-project-detection 'auto)
+  (doom-modeline-lsp t)
+  (doom-modeline-minor-modes nil))
+#+end_src
+
+** Which Key
+#+begin_src emacs-lisp
+(use-package which-key
+  :init (which-key-mode 1)
+  :custom
+  (which-key-idle-delay 0.1)
+  (which-key-separator " → ")
+  (which-key-popup-type 'minibuffer))
+#+end_src
+
+** Dashboard
+#+begin_src emacs-lisp
+(use-package dashboard
+  :init (dashboard-setup-startup-hook)
+  :custom
+  (initial-buffer-choice (lambda () (get-buffer-create dashboard-buffer-name)))
+  (dashboard-center-content t)
+  (dashboard-items '((recents . 5) (projects . 5) (agenda . 5)))
+  (dashboard-startup-banner 'logo)
+  (dashboard-display-icons-p t)
+  (dashboard-icon-type 'nerd-icons))
+#+end_src
+
+* Evil (Vim Emulation)
+** Core Evil
+#+begin_src emacs-lisp
+(use-package evil
+  :demand t
+  :init
+  (setq evil-want-integration t
+        evil-want-keybinding nil
+        evil-vsplit-window-right t
+        evil-split-window-below t)
+  :config (evil-mode 1))
+#+end_src
+
+** Evil Collection
+#+begin_src emacs-lisp
+(use-package evil-collection
+  :after evil
+  :config (evil-collection-init))
+#+end_src
+
+** Evil Extensions
+#+begin_src emacs-lisp
+(use-package evil-surround :hook (evil-mode . global-evil-surround-mode))
+(use-package evil-nerd-commenter :after evil)
+(use-package evil-numbers :after evil)
+(use-package evil-args :after evil)
+(use-package evil-exchange :after evil :config (evil-exchange-install))
+(use-package evil-indent-plus :after evil :config (evil-indent-plus-default-bindings))
+(use-package evil-visualstar :hook (evil-mode . global-evil-visualstar-mode))
+(use-package evil-matchit :hook (evil-mode . global-evil-matchit-mode))
+(use-package evil-snipe :after evil :config (evil-snipe-mode 1) (evil-snipe-override-mode 1))
+(use-package evil-lion :after evil :config (evil-lion-mode))
+(use-package evil-multiedit :after evil :config (evil-multiedit-default-keybinds))
+(use-package evil-goggles :hook (evil-mode . evil-goggles-mode) :custom (evil-goggles-duration 0.1))
+
+(use-package evil-escape
+  :hook (evil-mode . evil-escape-mode)
+  :custom
+  (evil-escape-key-sequence "jk")
+  (evil-escape-delay 0.2)
+  (evil-escape-excluded-modes '(dired-mode)))
+#+end_src
+
+* Completion System
+** Orderless
+#+begin_src emacs-lisp
+(use-package orderless
+  :demand t
+  :config
+  ;; Set completion styles to use orderless first, then basic matching.
+  (setq completion-styles '(orderless basic)
+        completion-category-defaults nil
+        completion-category-overrides '((file (styles . (partial-completion))))))
+#+end_src
+
+** Vertico
+#+begin_src emacs-lisp
+(use-package vertico
+  :demand t
+  :init(vertico-mode) ; Enable Vertico globally
+  :custom
+  (vertico-cycle t) ; Cycle through candidates at the end/beginning of the list
+  (vertico-resize t) ; Dynamically resize the completion window based on candidates
+  (vertico-count 10)) ; Show 10 candidates by default
+#+end_src
+
+** Marginalia
+#+begin_src emacs-lisp
+(use-package marginalia
+  :demand t
+  :after vertico
+  :init (marginalia-mode))
+#+end_src
+
+** Corfu
+#+begin_src emacs-lisp
+(use-package corfu
+  :demand t
+  :init (global-corfu-mode)
+  :custom
+  (corfu-cycle t)
+  (corfu-auto t)
+  (corfu-separator ?\s)
+  (corfu-quit-at-boundary 'next)
+  (corfu-preselect 'prompt)
+  (corfu-on-exact-match 'insert))
+#+end_src
+
+** Nerd Icons Corfu
+#+begin_src emacs-lisp
+(use-package nerd-icons-corfu
+  :after corfu
+  :config (add-to-list 'corfu-margin-formatters #'nerd-icons-corfu-formatter))
+#+end_src
+
+** Cape
+#+begin_src emacs-lisp
+(use-package cape
+  :demand t
+  :init
+  (add-to-list 'completion-at-point-functions #'cape-dabbrev)
+  (add-to-list 'completion-at-point-functions #'cape-file)  
+  (add-to-list 'completion-at-point-functions #'cape-elisp-block))
+#+end_src
+
+** Nerd Icons Completion
+#+begin_src emacs-lisp
+;;(use-package nerd-icons-completion
+;;  :after marginalia
+;;  :config
+;;  (nerd-icons-completion-mode)
+;;  (add-hook 'marginalia-mode-hook #'nerd-icons-completion-marginalia-setup))
+#+end_src
+
+** Consult
+#+begin_src emacs-lisp
+(use-package consult
+  :demand t
+  :init
+  ;; Set up some common keybindings for Consult commands.
+  (setq consult-line-start-hint t) ; Show line numbers in `consult-line`
+  :bind (
+         ("C-s" . consult-line)         ; Search in current buffer (replaces default isearch)
+         ("C-x b" . consult-buffer)     ; Switch buffer (replaces default `switch-to-buffer`)
+         ("C-x C-f" . consult-find)     ; Find file (replaces default `find-file`)
+         ("C-M-g" . consult-grep)       ; Grep files (e.g., using `grep` or `rg`)
+         ("M-y" . consult-yank-pop)     ; Yank from kill ring
+         ("M-g M-g" . consult-goto-line)) ; Go to line number
+         
+  :config
+  ;; Customize Consult commands for preview behavior.
+  (consult-customize
+   consult-ripgrep
+   consult-grep
+   consult-bookmark
+   consult-recent-file
+   consult--source-file-register
+   consult--source-bookmark
+   consult--source-recent-file
+   consult--source-buffer
+   consult--source-project-buffer
+   :preview-key (kbd "M-."))) ; Preview candidate with M-.
+#+end_src
+
+** Embark
+#+begin_src emacs-lisp
+(use-package embark
+  :demand t
+  :bind
+  (("C-." . embark-act)         ; Universal action key: acts on current target
+   ("C-," . embark-dwim)        ; Do What I Mean: context-aware action
+   ("C-h B" . embark-bindings)) ; Show keybindings for current Embark target
+  :init
+  ;; Use a minimal indicator for Embark to keep the minibuffer clean.
+  (setq embark-indicators '(embark-minimal-indicator)))
+#+end_src
+
+** Embark Consult
+#+begin_src emacs-lisp
+(use-package embark-consult
+  :demand t
+  :after (embark consult)
+  :config (add-hook 'embark-collect-mode-hook #'consult-preview-at-point-mode))
+#+end_src
+
+
+* Buffer Management
+
+** iBuffer
+#+begin_src emacs-lisp
+(use-package ibuffer
+  :ensure nil
+  :config
+  (setq ibuffer-show-empty-filter-groups nil
+        ibuffer-expert t
+        ibuffer-use-header-line t
+        ibuffer-display-summary nil
+        ibuffer-formats
+        '((mark read-only modified " "
+                (icon 4 4 :left)
+                (name 30 30 :left :elide)
+                " "
+                (size-h 9 9 :right)
+                " "
+                (mode 16 16 :left :elide)
+                " "
+                filename-and-process))
+        ibuffer-saved-filter-groups
+        '(("default" ("user" (not (or (name . "^\\*") (name . "\\*$")))))))
+  (add-hook 'ibuffer-mode-hook
+            (lambda ()
+              (ibuffer-switch-to-saved-filter-groups "default"))))
+#+end_src
+
+** Nerd Icons Integration
+#+begin_src emacs-lisp
+(use-package nerd-icons-ibuffer
+  :after ibuffer
+  :config (add-hook 'ibuffer-mode-hook #'nerd-icons-ibuffer-mode))
+#+end_src

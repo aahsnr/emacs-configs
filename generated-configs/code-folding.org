@@ -1,11 +1,32 @@
-** Code Folding
-*** Hideshow (Built-in)
+* Overview
+
+This configuration provides a unified code folding interface for Emacs that combines:
+- Built-in hideshow functionality
+- Modern tree-sitter based folding with treesit-fold
+- LSP server folding range support
+- Visual indicators and state persistence
+- Doom modeline integration
+
+** Features
+- Unified keybindings across different folding methods
+- Visual fold indicators with line counts
+- Gruvbox dark theme integration
+- Persistent folding states across sessions
+- Doom modeline folding status display
+
+* Core Folding Packages
+
+** Hideshow (Built-in)
+Emacs' built-in code folding system with enhanced overlay display.
+
 #+begin_src emacs-lisp
+;;; Enhanced Code Folding Configuration for Emacs
+;; Provides unified folding interface with hideshow, treesit-fold, and LSP integration
+
 (use-package hideshow
   :ensure nil
   :diminish hs-minor-mode
-  :hook ((prog-mode . hs-minor-mode)
-         (eglot-managed-mode . hs-minor-mode))
+  :hook (prog-mode . hs-minor-mode)
   :custom
   (hs-hide-comments-when-hiding-all t)
   (hs-allow-nesting t)
@@ -13,10 +34,11 @@
   :config
   ;; Gruvbox dark theme faces
   (custom-set-faces
-   '(hs-face ((t (:background "#504945" :foreground "#a89984" :box (:line-width 1 :color "#665c54")))))
+   '(hs-face ((t (:background "#504945" :foreground "#a89984" 
+                  :box (:line-width 1 :color "#665c54")))))
    '(hs-fringe-face ((t (:foreground "#fb4934")))))
   
-  ;; Custom overlay display with line counts
+  ;; Enhanced overlay display with line counts
   (defun hs-display-code-line-counts (ov)
     "Display line counts for folded regions."
     (when (eq 'code (overlay-get ov 'hs))
@@ -33,11 +55,15 @@
          ("C-c h S" . hs-show-all)))
 #+end_src
 
-*** Treesit-fold Integration
+** Treesit-fold Integration
+Modern tree-sitter based folding with enhanced summaries.
+
 #+begin_src emacs-lisp
 (use-package treesit-fold
+  :ensure t
   :after treesit
-  :hook ((c-ts-mode c++-ts-mode python-ts-mode json-ts-mode bash-ts-mode) . treesit-fold-mode)
+  :hook ((c-ts-mode c++-ts-mode python-ts-mode json-ts-mode 
+          bash-ts-mode typescript-ts-mode) . treesit-fold-mode)
   :custom
   (treesit-fold-summary-show t)
   (treesit-fold-replacement "...")
@@ -45,7 +71,9 @@
   :config
   ;; Gruvbox dark theme faces
   (custom-set-faces
-   '(treesit-fold-replacement-face ((t (:foreground "#a89984" :background "#504945" :box (:line-width 1 :color "#665c54") :weight bold))))
+   '(treesit-fold-replacement-face 
+     ((t (:foreground "#a89984" :background "#504945" 
+          :box (:line-width 1 :color "#665c54") :weight bold))))
    '(treesit-fold-fringe-face ((t (:foreground "#fb4934")))))
   
   ;; Enhanced summary with line counts
@@ -66,27 +94,31 @@
          ("C-c f S" . treesit-fold-open-all)))
 #+end_src
 
-*** Eglot Folding Integration
+* LSP Integration
+
+** LSP Folding Range Support
+Integration with Language Server Protocol folding ranges via eglot.
+
 #+begin_src emacs-lisp
-;; Eglot folding range support
-(defun eglot-folding-range-support-p ()
-  "Check if current eglot server supports folding ranges."
-  (and (eglot-current-server)
+(defun lsp-folding-range-support-p ()
+  "Check if current LSP server supports folding ranges."
+  (and (bound-and-true-p eglot--managed-mode)
+       (eglot-current-server)
        (eglot--server-capable :foldingRangeProvider)))
 
-(defun eglot-get-folding-ranges ()
-  "Get folding ranges from eglot server."
-  (when (eglot-folding-range-support-p)
+(defun lsp-get-folding-ranges ()
+  "Get folding ranges from LSP server."
+  (when (lsp-folding-range-support-p)
     (condition-case nil
         (jsonrpc-request (eglot-current-server)
                          :textDocument/foldingRange
                          (list :textDocument (eglot--TextDocumentIdentifier)))
       (error nil))))
 
-(defun eglot-apply-folding-ranges ()
+(defun lsp-apply-folding-ranges ()
   "Apply folding ranges from LSP server using hideshow."
   (interactive)
-  (when-let ((ranges (eglot-get-folding-ranges)))
+  (when-let ((ranges (lsp-get-folding-ranges)))
     (save-excursion
       (dolist (range ranges)
         (let* ((start-line (1+ (gethash "startLine" range)))
@@ -105,14 +137,19 @@
     (when (hs-find-block-beginning)
       (hs-hide-block))))
 
-;; Add eglot folding keybinding
-(add-hook 'eglot-managed-mode-hook
-          (lambda ()
-            (when (eglot-folding-range-support-p)
-              (local-set-key (kbd "C-c e f") #'eglot-apply-folding-ranges))))
+;; Add LSP folding keybinding when eglot is active
+(with-eval-after-load 'eglot
+  (add-hook 'eglot-managed-mode-hook
+            (lambda ()
+              (when (lsp-folding-range-support-p)
+                (local-set-key (kbd "C-c e f") #'lsp-apply-folding-ranges)))))
 #+end_src
 
-*** Fringe Indicators
+* Visual Enhancements
+
+** Fringe Indicators
+Custom fringe bitmaps for fold indicators with Gruvbox theming.
+
 #+begin_src emacs-lisp
 (use-package fringe
   :ensure nil
@@ -121,7 +158,7 @@
   (custom-set-faces
    '(fringe ((t (:background "#282828" :foreground "#a89984")))))
   
-  ;; Simple fold indicators
+  ;; Enhanced fold indicators
   (when (fboundp 'define-fringe-bitmap)
     (define-fringe-bitmap 'fold-indicator
       [#b11111111
@@ -132,15 +169,29 @@
        #b10000001
        #b10000001
        #b11111111]
+      nil 8 'center)
+    
+    (define-fringe-bitmap 'unfold-indicator
+      [#b11111111
+       #b10000001
+       #b10111101
+       #b10111101
+       #b10111101
+       #b10111101
+       #b10000001
+       #b11111111]
       nil 8 'center))
   
   ;; Set fringe width
   (fringe-mode '(8 . 8)))
 #+end_src
 
-*** Unified Folding Interface
+* Unified Interface
+
+** Smart Folding Functions
+Unified commands that automatically choose the best folding method available.
+
 #+begin_src emacs-lisp
-;; Smart folding that chooses the best method
 (defun unified-fold-toggle ()
   "Toggle folding using the best available method."
   (interactive)
@@ -182,9 +233,12 @@
 (global-set-key (kbd "C-c C-s") #'unified-fold-show-all)
 #+end_src
 
-*** Doom Modeline Integration
+* State Management
+
+** Folding State Tracking
+Real-time tracking of folding states for modeline display.
+
 #+begin_src emacs-lisp
-;; Folding state tracking
 (defvar-local folding-state-cache nil
   "Cache for folding state to avoid expensive calculations.")
 
@@ -238,58 +292,72 @@
   (advice-add 'treesit-fold-toggle :after (lambda (&rest _) (folding-schedule-update)))
   (advice-add 'treesit-fold-close-all :after (lambda (&rest _) (folding-schedule-update)))
   (advice-add 'treesit-fold-open-all :after (lambda (&rest _) (folding-schedule-update))))
-
-;; Doom modeline segment definition
-(doom-modeline-def-segment folding
-  "Folding state indicator for doom-modeline."
-  (when (and (or (bound-and-true-p hs-minor-mode)
-                 (bound-and-true-p treesit-fold-mode))
-             folding-state-cache)
-    (let* ((active (car folding-state-cache))
-           (total (cdr folding-state-cache))
-           (icon (if (> active 0) "▼" "▶"))
-           (face (if (> active 0) 'doom-modeline-info 'doom-modeline-buffer-minor-mode)))
-      (concat
-       (doom-modeline-spc)
-       (propertize icon 'face face)
-       (when (> total 0)
-         (propertize (format "%d/%d" active total) 'face face))))))
-
-;; Custom doom modeline with folding
-(doom-modeline-def-modeline 'folding-modeline
-  '(bar workspace-name window-number modals matches follow buffer-info remote-host buffer-position word-count parrot selection-info)
-  '(compilation objed-state misc-info persp-name battery grip irc mu4e gnus github debug repl lsp minor-modes folding input-method indent-info buffer-encoding major-mode process vcs checker time))
-
-;; Function to toggle folding modeline
-(defun toggle-folding-modeline ()
-  "Toggle between default and folding-enabled doom modeline."
-  (interactive)
-  (if (eq doom-modeline-mode-line 'folding-modeline)
-      (doom-modeline-set-modeline 'main)
-    (doom-modeline-set-modeline 'folding-modeline))
-  (force-mode-line-update))
-
-;; Auto-enable folding modeline in programming modes
-(defun maybe-enable-folding-modeline ()
-  "Enable folding modeline in programming buffers."
-  (when (and (derived-mode-p 'prog-mode)
-             (or (bound-and-true-p hs-minor-mode)
-                 (bound-and-true-p treesit-fold-mode)))
-    (doom-modeline-set-modeline 'folding-modeline)
-    (folding-update-state-cache)))
-
-(add-hook 'prog-mode-hook #'maybe-enable-folding-modeline)
-(add-hook 'hs-minor-mode-hook #'maybe-enable-folding-modeline)
-(add-hook 'treesit-fold-mode-hook #'maybe-enable-folding-modeline)
-
-;; Keybinding to toggle folding modeline
-(global-set-key (kbd "C-c m f") #'toggle-folding-modeline)
 #+end_src
 
-*** Folding State Persistence
+* Doom Modeline Integration
+
+** Modeline Segment Definition
+Custom doom-modeline segment to display folding status.
+
 #+begin_src emacs-lisp
-;; Optional: Save and restore folding states
-(defvar folding-save-file (expand-file-name "folding-states" user-emacs-directory)
+(with-eval-after-load 'doom-modeline
+  ;; Define folding segment
+  (doom-modeline-def-segment folding
+    "Folding state indicator for doom-modeline."
+    (when (and (or (bound-and-true-p hs-minor-mode)
+                   (bound-and-true-p treesit-fold-mode))
+               folding-state-cache)
+      (let* ((active (car folding-state-cache))
+             (total (cdr folding-state-cache))
+             (icon (if (> active 0) "▼" "▶"))
+             (face (if (> active 0) 'doom-modeline-info 'doom-modeline-buffer-minor-mode)))
+        (concat
+         (doom-modeline-spc)
+         (propertize icon 'face face)
+         (when (> total 0)
+           (propertize (format "%d/%d" active total) 'face face))))))
+
+  ;; Custom doom modeline with folding (fixed checker segment)
+  (doom-modeline-def-modeline 'folding-modeline
+    '(bar workspace-name window-number modals matches follow buffer-info 
+      remote-host buffer-position word-count parrot selection-info)
+    '(compilation objed-state misc-info persp-name battery grip irc mu4e gnus 
+      github debug repl lsp minor-modes folding input-method indent-info 
+      buffer-encoding major-mode process vcs time))
+
+  ;; Function to toggle folding modeline
+  (defun toggle-folding-modeline ()
+    "Toggle between default and folding-enabled doom modeline."
+    (interactive)
+    (if (eq doom-modeline-current-modeline 'folding-modeline)
+        (doom-modeline-set-modeline 'main)
+      (doom-modeline-set-modeline 'folding-modeline))
+    (force-mode-line-update))
+
+  ;; Auto-enable folding modeline in programming modes
+  (defun maybe-enable-folding-modeline ()
+    "Enable folding modeline in programming buffers."
+    (when (and (derived-mode-p 'prog-mode)
+               (or (bound-and-true-p hs-minor-mode)
+                   (bound-and-true-p treesit-fold-mode)))
+      (doom-modeline-set-modeline 'folding-modeline)
+      (folding-update-state-cache)))
+
+  (add-hook 'prog-mode-hook #'maybe-enable-folding-modeline)
+  (add-hook 'hs-minor-mode-hook #'maybe-enable-folding-modeline)
+  (add-hook 'treesit-fold-mode-hook #'maybe-enable-folding-modeline)
+
+  ;; Keybinding to toggle folding modeline
+  (global-set-key (kbd "C-c m f") #'toggle-folding-modeline))
+#+end_src
+
+* State Persistence
+
+** Save and Restore Folding States
+Persistent folding states across Emacs sessions.
+
+#+begin_src emacs-lisp
+(defvar folding-save-file (expand-file-name "folding-states.el" user-emacs-directory)
   "File to save folding states.")
 
 (defun folding-save-state ()
@@ -322,7 +390,9 @@
         (let ((all-states (if (file-exists-p folding-save-file)
                               (with-temp-buffer
                                 (insert-file-contents folding-save-file)
-                                (read (current-buffer)))
+                                (condition-case nil
+                                    (read (current-buffer))
+                                  (error '())))
                             '())))
           (setf (alist-get file all-states nil nil #'string=) states)
           (with-temp-file folding-save-file
@@ -333,31 +403,127 @@
   (interactive)
   (when (and buffer-file-name
              (file-exists-p folding-save-file))
-    (let* ((all-states (with-temp-buffer
-                         (insert-file-contents folding-save-file)
-                         (read (current-buffer))))
-           (states (alist-get buffer-file-name all-states nil nil #'string=)))
-      (dolist (state states)
-        (let ((type (car state))
-              (start (cadr state))
-              (end (caddr state)))
-          (cond
-           ((eq type 'hs)
-            (when (bound-and-true-p hs-minor-mode)
-              (save-excursion
-                (goto-char start)
-                (hs-hide-block))))
-           ((eq type 'treesit)
-            (when (bound-and-true-p treesit-fold-mode)
-              (save-excursion
-                (goto-char start)
-                (treesit-fold-close))))))))))
+    (condition-case nil
+        (let* ((all-states (with-temp-buffer
+                             (insert-file-contents folding-save-file)
+                             (read (current-buffer))))
+               (states (alist-get buffer-file-name all-states nil nil #'string=)))
+          (dolist (state states)
+            (let ((type (car state))
+                  (start (cadr state))
+                  (end (caddr state)))
+              (when (and (>= start (point-min)) (<= end (point-max)))
+                (cond
+                 ((eq type 'hs)
+                  (when (bound-and-true-p hs-minor-mode)
+                    (save-excursion
+                      (goto-char start)
+                      (hs-hide-block))))
+                 ((eq type 'treesit)
+                  (when (bound-and-true-p treesit-fold-mode)
+                    (save-excursion
+                      (goto-char start)
+                      (treesit-fold-close)))))))))
+      (error (message "Failed to restore folding state")))))
 
 ;; Auto-save/restore hooks
 (add-hook 'kill-buffer-hook #'folding-save-state)
-(add-hook 'find-file-hook #'folding-restore-state)
+(add-hook 'find-file-hook 
+          (lambda () 
+            (run-with-idle-timer 1 nil #'folding-restore-state)))
 
-;; Keybindings for manual save/restore
+;; Manual save/restore keybindings
 (global-set-key (kbd "C-c f w") #'folding-save-state)
 (global-set-key (kbd "C-c f r") #'folding-restore-state)
 #+end_src
+
+* Additional Conveniences
+
+** Utility Functions
+Extra convenience functions for folding management.
+
+#+begin_src emacs-lisp
+(defun folding-status ()
+  "Show current folding status in minibuffer."
+  (interactive)
+  (if-let ((cache folding-state-cache))
+      (message "Folding: %d/%d active" (car cache) (cdr cache))
+    (message "No folding information available")))
+
+(global-set-key (kbd "C-c f i") #'folding-status)
+
+;; Initialize folding state on startup
+(add-hook 'emacs-startup-hook
+          (lambda ()
+            (run-with-idle-timer 2 nil
+                                 (lambda ()
+                                   (dolist (buf (buffer-list))
+                                     (with-current-buffer buf
+                                       (when (derived-mode-p 'prog-mode)
+                                         (folding-update-state-cache))))))))
+
+(provide 'code-folding)
+;;; code-folding.el ends here
+#+end_src
+
+* Keybinding Reference
+
+** Hideshow Bindings
+| Keybinding | Function           | Description              |
+|------------|--------------------|--------------------------|
+| =C-c h t=  | hs-toggle-hiding   | Toggle current fold      |
+| =C-c h h=  | hs-hide-block      | Hide current block       |
+| =C-c h s=  | hs-show-block      | Show current block       |
+| =C-c h H=  | hs-hide-all        | Hide all blocks          |
+| =C-c h S=  | hs-show-all        | Show all blocks          |
+
+** Treesit-fold Bindings
+| Keybinding | Function              | Description              |
+|------------|-----------------------|--------------------------|
+| =C-c f t=  | treesit-fold-toggle   | Toggle current fold      |
+| =C-c f h=  | treesit-fold-close    | Close current fold       |
+| =C-c f s=  | treesit-fold-open     | Open current fold        |
+| =C-c f H=  | treesit-fold-close-all| Close all folds          |
+| =C-c f S=  | treesit-fold-open-all | Open all folds           |
+
+** Unified Interface
+| Keybinding   | Function              | Description              |
+|--------------|-----------------------|--------------------------|
+| =C-c TAB=    | unified-fold-toggle   | Smart fold toggle        |
+| =C-c C-h=    | unified-fold-hide-all | Smart hide all           |
+| =C-c C-s=    | unified-fold-show-all | Smart show all           |
+
+** Additional Functions
+| Keybinding | Function                 | Description                    |
+|------------|--------------------------|--------------------------------|
+| =C-c e f=  | lsp-apply-folding-ranges | Apply LSP folding ranges       |
+| =C-c m f=  | toggle-folding-modeline  | Toggle folding modeline        |
+| =C-c f w=  | folding-save-state       | Save folding state             |
+| =C-c f r=  | folding-restore-state    | Restore folding state          |
+| =C-c f i=  | folding-status           | Show folding info              |
+
+* Installation and Usage
+
+** Installation
+1. Save this configuration to a file (e.g., =code-folding.org=)
+2. Tangle the code blocks to generate =code-folding.el=:
+   #+begin_example
+   M-x org-babel-tangle
+   #+end_example
+3. Add to your Emacs configuration:
+   #+begin_src emacs-lisp :tangle no
+   (load-file "path/to/code-folding.el")
+   #+end_src
+
+** Requirements
+- Emacs 29+ (for tree-sitter support)
+- =treesit-fold= package
+- =doom-modeline= (optional, for modeline integration)
+- =eglot= (for LSP folding support)
+
+** Quick Start
+After installation, folding will be automatically enabled in programming modes:
+- Use =C-c TAB= to toggle folds
+- Use =C-c C-h= to hide all folds
+- Use =C-c C-s= to show all folds
+- Folding states will persist across sessions automatically

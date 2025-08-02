@@ -698,46 +698,6 @@
   (org-fragtog-preview-delay 0.5))
 
 ;; =============================================================================
-;; ADDITIONAL BUILT-IN ENHANCEMENTS
-;; =============================================================================
-
-(use-package calendar
-  :ensure nil
-  :custom
-  (calendar-mark-holidays-flag t)
-  (calendar-mark-diary-entries-flag t)
-  (calendar-view-holidays-initially-flag t))
-
-(use-package diary-lib
-  :ensure nil
-  :custom
-  (diary-file (concat my/org-directory "diary"))
-  (diary-display-function 'diary-fancy-display)
-  (diary-list-entries-hook '(diary-include-other-diary-files diary-sort-entries))
-  (diary-hook '(diary-make-entry)))
-
-(use-package appt
-  :ensure nil
-  :custom
-  (appt-display-diary nil)
-  (appt-display-duration 30)
-  (appt-display-mode-line t)
-  (appt-disp-window-function 'appt-disp-window)
-  :config
-  (appt-activate 1))
-
-;; Holidays customization
-(use-package holidays
-  :ensure nil
-  :custom
-  (holiday-general-holidays nil)
-  (holiday-local-holidays nil)
-  (holiday-other-holidays nil)
-  (holiday-bahai-holidays nil)
-  (holiday-hebrew-holidays nil)
-  (holiday-islamic-holidays nil))
-
-;; =============================================================================
 ;; CUSTOM UTILITY FUNCTIONS
 ;; =============================================================================
 
@@ -1084,56 +1044,6 @@
     "bba" 'org-babel-sha1-hash
     "bbx" 'org-babel-do-key-sequence-in-edit-buffer
     "bb." 'org-babel-transient-state/body))
-
-;; =============================================================================
-;; HYDRAS FOR COMPLEX OPERATIONS
-;; =============================================================================
-
-(use-package hydra
-  :ensure t
-  :after org
-  :config
-  (defhydra hydra-org-clock (:color blue :hint nil)
-    "
-Clock   ^In/Out^     ^Edit^   ^Summary^    | ^Timers^           ^Other^
-        _i_n         _e_dit   _g_oto entry | _z_: Start timer   _j_: Jump to current
-        _c_ontinue   _q_uit   _d_isplay    | _Z_: Pause timer   _r_: Report
-        _o_ut        ^ ^      _r_eport     | _E_: Set effort    _R_: Clocktable
-    "
-    ("i" org-clock-in)
-    ("o" org-clock-out)
-    ("c" org-clock-in-last)
-    ("e" org-clock-modify-effort-estimate)
-    ("q" org-clock-cancel)
-    ("g" org-clock-goto)
-    ("d" org-clock-display)
-    ("r" org-clock-report)
-    ("R" org-clocktable-try-shift)
-    ("z" org-timer-start)
-    ("Z" org-timer-pause-or-continue)
-    ("E" org-set-effort)
-    ("j" (org-clock-goto t))
-    ("q" nil :color blue))
-  
-  (defhydra hydra-org-template (:color blue :hint nil)
-    "
- Templates: _s_rc  _e_xample  _q_uote  _v_erse  _c_enter  _l_aTeX  _h_tml  _a_scii
-"
-    ("s" (org-insert-structure-template "src"))
-    ("e" (org-insert-structure-template "example"))
-    ("q" (org-insert-structure-template "quote"))
-    ("v" (org-insert-structure-template "verse"))
-    ("c" (org-insert-structure-template "center"))
-    ("l" (org-insert-structure-template "latex"))
-    ("h" (org-insert-structure-template "html"))
-    ("a" (org-insert-structure-template "ascii"))
-    ("ESC" nil :color blue))
-  
-  ;; Add hydra keybindings
-  (my/local-leader-keys
-    :keymaps 'org-mode-map
-    "C" 'hydra-org-clock/body
-    "I" 'hydra-org-template/body))
 
 ;; =============================================================================
 ;; PERFORMANCE AND STARTUP OPTIMIZATIONS

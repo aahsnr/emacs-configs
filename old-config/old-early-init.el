@@ -1,7 +1,7 @@
 ;; Disable package.el completely
-; (setq package-enable-at-startup nil
-;       package--init-file-ensured t
-;       package-quickstart nil)
+;; (setq package-enable-at-startup nil
+;;       package--init-file-ensured t
+;;       package-quickstart nil)
 
 (add-hook 'after-init-hook
           (lambda ()
@@ -57,25 +57,11 @@
 ;; Remove messages from the *Messages* buffer.
 (setq-default message-log-max nil)
 
-;; ;; Define a function to enable line numbers
-;; (defun my/enable-line-numbers ()
-;;   "Enable line numbers in supported modes."
-;;   (when (derived-mode-p 'text-mode 'prog-mode 'emacs-lisp-mode)
-;;     (display-line-numbers-mode 1)))
-
-;; ;; Add the function to the appropriate hooks
-;; (add-hook 'text-mode-hook #'my/enable-line-numbers)
-;; (add-hook 'prog-mode-hook #'my/enable-line-numbers)
-;; (add-hook 'emacs-lisp-mode-hook #'my/enable-line-numbers)
-
-;; ;; Ensure relative line numbers are not enabled
-;; (setq display-line-numbers-type 't);; Faster rendering
-
 (setq bidi-paragraph-direction 'left-to-right
       bidi-inhibit-bpa t
       redisplay-skip-fontification-on-input t
       inhibit-compacting-font-caches t)
-                                        
+
 ;; Native compilation settings
 (setq native-comp-deferred-compilation t
       native-comp-async-report-warnings-errors nil
@@ -83,10 +69,7 @@
       comp-speed 3
       native-compile-target-directory (expand-file-name "eln-cache/" user-emacs-directory))
 
-; Kill these buffers on startup.
+;; Kill these buffers on startup.
 (kill-buffer "*Messages*")
 (kill-buffer "*scratch*")
-
-;(kill-buffer "*Async-native-compile-log*")
-
-
+;;(kill-buffer "*Async-native-compile-log*")

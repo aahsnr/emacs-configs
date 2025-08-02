@@ -1,71 +1,164 @@
 # All tasks must be done in the given order
+1. [NOTE]: Add the following code when setting up org-agenda
+  (setq org-agenda-start-with-log-mode t) ; Show log entries in agenda
+  (setq org-agenda-span 'day) ; Default agenda span to day
+  (setq org-agenda-time-grid '((daily today require-timed)
+                               (800 1000 ".-")
+                               (1200 1400 ".-")
+                               (1600 1800 ".-")
+                               (2000 2200 ".-")))
+  (setq org-agenda-compact-blocks t) ; Compact agenda blocks
+
+2. [NOTE]: Add the following code when setting up Latex export
+  ;; Org Export settings (basic HTML export)
+  (setq org-html-validation-link nil) ; Don't include W3C validation link
+  (setq org-html-head-include-default-style nil) ; Don't include default CSS
+  (setq org-html-head-include-scripts nil) ; Don't include default JS
+  (setq org-html-head "<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/water.css@2/out/water.css\">") ; Simple CSS for exports
+
+- [ ] **Use the org-modern and org-appear settings from my doom setup**
 
 - [ ] __Replace lsp-mode with eglot & eglot-booster__
+
 - [ ] __Replace dap-mode with dape__
+
 - [ ] __Replace flycheck with flymake__
-- [x] __Evil__
-- [ ] __Buffer Management__
+
+- [ ] __Add consult-flymake__
+
+- [ ] __Fix dired/dirvish__
+
+- [ ] __Setup global word-wrap__
+
+- [ ] __Evil__
+
+- [ ] __Make sure the following packages are working org source code blocks, first by manually checking, then adding if neccessary__
+  - Completion System
+  - Eglot, eldoc, dape, flymake
+  - Alphaelia
+
+
+
+- [ ] __Buffer Management with ibuffer and bufler__
+
 - [ ] __Project__ [Integrate project with completion system and ibuffer and perspective.el]
-- [ ] __Completion System__ [ Further add dabbrev and integrate the completion system with org-src-code blocks ]
+
+- [x] __Completion System__ [ Further add dabbrev and integrate the completion system with org-src-code blocks. Check when coding in jupyter ]
+
 - [ ] __Keybindings__
+
 - [ ] __Delimiters with smartparens and delimiters__
-- [x] __Replace with doom-themes - Catppuccin Mocha__
-- [ ] __Treemacs__
+
+- [x] __Treemacs__
+
 - [ ] __Git with treemacs__
-- [ ] __Treemacs toggle__
-- [ ] __Dired__
+
+- [x] __Treemacs toggle__
+
+- [x] __Dired__
+
 - [ ] __PDF Tools__
-- [ ] __Winner-Mode__
-- [ ] __Which-Key__
-- [ ] __Solaire Mode__
-- [ ] __Linters with flycheck and consult-flycheck__
-- [ ] __Formatter__
+
+- [x] __Winner-Mode__
+
+- [x] __Which-Key__
+
+- [x] __Solaire Mode__
+
+- [x] __Alphaelia as the Formatter__
+
 - [x] __Doom Modeline__
+
 - [x] __Recent Files__
+
 - [x] __Savehist__
+
 - [ ] __Window Management__
-- [ ] __Replace Projectile with Project.el__
-- [ ] __Replace Bufler with ibuffer__ [Integrate ibuffer with perspective.el and project.el and possibly completion system]
-- [ ] __Perspective__ [Integrate with ibuffer, project.el and possibly completion system]
-- [ ] __Prescient__
-- [ ] __Avy Jump__ [Does it provide extra functionality than evil visual start? Maybe integrate with visual star]
+
+- [x] __Replace Projectile with Project.el__
+
+- [x] __Replace Bufler with ibuffer__ [Integrate ibuffer with perspective.el and project.el and possibly completion system]
+
+- [x] __Perspective__ [Integrate with ibuffer, project.el and possibly completion system]
+
+Write comprehensive perspective.el configuration from https://github.com/nex3/perspective-el for emacs 30 using use-package format, and keybindings follow spacemacs-like keybindings using SPC as leader. The persective.el configuration must have the following integrations: ibuffer, project.el, treemacs and vertico, assuming that the user has setup configurations for the latter 4 packages. Do not introduce errors and redundant configurations.
+
+- [ ] __Avy: Complete the configuration from avy.md__ 
+
 - [ ] __Snippets: yasnippet + yasnippet-capf + consult-yasnippet__
-- [ ] __Flyspell with hunspell backend__
-- [ ] __Move-Text__
+
+- [x] __Flyspell with hunspell backend__ [ Make sure flyspell is disabled for certain unnecessay parts of the config. In the org-mode, disable it in the headlines and inside the org source code blocks ]
+
+- [x] __Move-Text__
+
 - [ ] __Aggressive Indent__: [Make sure enabled in org source code blocks. Does it provide extra functionality than evil indent plus? Maybe integrate with indent plus]
 
 - [ ] __Helpful__
+
 - [ ] __Pulsar__
+
 - [ ] __Casual__
+
 - [ ] __AutoSave__
+
 - [ ] __Indent Bars__
-- [ ] __Nerd Icons and its Integration__
-- [ ] __Catppuccin Theme__
-- [ ] __LaTeX__: Add laas, auto-activating-snippets, cdlatex
-*Using the attached org file as the base emacs configuration, write a comprehensive setup for latex documents in emacs. Use tectonic as the backend and implement a robust citation environment. Do not setup for org-mode integration yet. Make sure to integrate citar-embark and citar-capf to the citation. Use pdf-tools in the base emacs configuration as the default pdf viewer. Try to mimic the setup from doom emacs setup as closely as possible while integrating with the provided base emacs configuration. Check if the resulting latex writing environment benefits from using the parsebib package. Only integrate parsebib if it complements the resulting latex writing environment.*
-Integrate with PDF Tools
+
+- [ ] __Org__
+  - [ ] __flyspell__
+  - [ ] __cdlatex__
+  - [ ] __fill column__
+  - [ ] __display no. of words__
+  - [x] __integrate org-roam with org-roam-ql, org-roam-ql-ql, embark-org-roam, org-roam-timestamps__
+  - [ ] __setup padding from gemini (located in generated-configs)__
+  - [ ] __setup org-roam general keybindings from incomplete claude.ai configuration in email unbent-crib-onyx@duck.com. Also complete org-roam from org-roam.md and compared it with the incomplete claude.ai configuration__
+
+- [ ] __LaTeX__: [Add laas, auto-activating-snippets, cdlatex]
+Using the attached config.el file as the base emacs configuration, write a comprehensive setup for writing latex documents in emacs. Integrate tectonic from https://github.com/tectonic-typesetting/tectonic into the LaTeX writing environment, as well as integrate texlab from https://github.com/latex-lsp/texlab as the lsp backend. As a result, the LaTeX writing environment would use both these methods seamlessly and interchangeably where possible.  Also integrate org-mode and org-roam into the LaTeX writing environment. Make sure I have the ability to write LaTeX documents both in org mode files as well as separate LaTeX. Try to mimic the setup from doom emacs setup as closely as possible while not adding any redundant configuration options. Furthermore, setup ligatures for LaTeX with additional math ligaturs, and make sure to setup cdlatex for quick math insertions, as well as make sure to setup laas and auto-activating-snippets. Also setup custom snippets that might be useful to quickly format and write LaTeX documents both in LaTeX files and org-mode files. Additionally setup TeX-fold if writing separate LaTeX files.  Check if the resulting latex writing environment benefits from using the parsebib package. Only integrate parsebib if it complements the resulting latex writing environment. Further, use pdf-tools as the default pdf viewer when compiling LaTeX files. Implement a robust citation and reference environment citar-embark and citar-capf, as well as,org-roam-bibtex and citar-org-roam.
+
+Make sure to search the web before writing anything. Do not introduce errors. And keep in mind that the attached config.el file is formatted as an org file. And only show the parts about this LaTeX writing environment.
+
 - [ ] __Python__
-- [ ] __Imenu__
+
+- [x] __Imenu__
+
 - [ ] __Org__:Check DT's doom config for color-coded todo keywords
+
 - [ ] __Ligatures and Unicode that mimics doom emacs__
+
 - [ ] __prettify-symbols-mode__
+
 - [ ] __Crux__
-- [ ] __Rainbow Mode__
+
+- [x] __Colorful Mode__
+
 - [ ] __Rainbow-Delimiters__
-- [ ] __Origami__
+
 - [ ] __Smartparens__
+
 - [ ] __Setup anzu and evil-anzu__
+
 - [ ] __EasySession__
-- [ ] __ZZZ-to-char__
+
+- [x]  __ZZZ-to-char__
+
 - [ ] __Rearrange settings from early-init.el using emacs-from-scratch
+
 - [ ] __tldr__
+
 - [ ] __add transient config after everything__
 Set a separate transient menu for magit
+
 - [ ] Integrate ripgrep and fd throughout the whole configuration
+
 - [ ] Improve existing vertico by adding the extensions from github
+
 - [ ] Line Numbers from emacs-config.org
+
 - [ ] Org-mode export support or bibliography note management with Org-roam later.
+
 - [ ] Get jupyter config from python-dev-env.md
+
+- [ ] __Setup calendar, diary-lib, appt (appointments) later__
 
 
 ## The following packages must be working in org source code blocks

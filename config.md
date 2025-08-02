@@ -285,37 +285,6 @@
   (evil-escape-excluded-modes '(dired-mode)))
 #+end_src
 
-* Editor Behaviour
-** Hide Modeline
-#+begin_src emacs-lisp
-(use-package hide-mode-line
-  :ensure t
-  :config
-  ;; Rule #1: Always show the modeline in org-mode files.
-  (setq hide-mode-line-excluded-modes '(org-mode))
-
-  ;; Rule #2: Use standard hide-mode-line for non-problematic modes.
-  (add-hook 'ibuffer-mode-hook #'hide-mode-line-mode)
-  (add-hook 'completion-list-mode-hook #'hide-mode-line-mode))
-
-;; Rule #3: Define one powerful function to forcefully hide the modeline.
-;; This is the most direct method and bypasses package conflicts.
-(defun my-force-hide-agenda-modelines ()
-  "Forcefully hide the modeline in any Org Agenda related buffer
-by setting the buffer-local mode-line-format to nil."
-  (setq-local mode-line-format nil))
-
-;; Rule #4: Add our function to the relevant hooks with a low DEPTH (-100).
-;; This makes our function run LAST, after doom-modeline has made its changes.
-;; A lower number in the DEPTH argument means later execution.
-
-;; This hook covers the final agenda views (weekly, daily, etc.).
-(add-hook 'org-agenda-finalize-hook #'my-force-hide-agenda-modelines nil -100)
-
-;; This hook covers the initial "Agenda Commands" dispatcher.
-(add-hook 'org-agenda-log-mode-hook #'my-force-hide-agenda-modelines nil -100)
-#+end_src
-
 * TODO Completion Framework
 Match the completion framework with my other configurations.
 ** Base Completion
@@ -518,51 +487,41 @@ Match the completion framework with my other configurations.
   :ensure nil
   :bind ("C-x C-b" . ibuffer)
   :config
-  ;; Defer loading of nerd-icons-ibuffer until ibuffer is actually used
+  ;; Load nerd-icons-ibuffer first to define the icon format specifier
+  (require 'nerd-icons-ibuffer)
   (add-hook 'ibuffer-mode-hook #'nerd-icons-ibuffer-mode)
-  
-  (setq ibuffer-expert t
-	ibuffer-show-empty-filter-groups nil
-	ibuffer-use-header-line t
-	ibuffer-movement-cycle t
-	ibuffer-display-summary nil
-	ibuffer-use-other-window t) ; Use human-readable file sizes
-  
-  ;; Set the format for ibuffer list, integrating nerd-icons
-  (setq ibuffer-formats
-	'((mark read-only modified " "
-		(icon 4 4 :left)
-		(name 30 30 :left :elide)
-		" "
-		(size-h 9 9 :right)
-		" "
-		(mode 16 16 :left :elide)
-		" "
-		filename-and-process)))
-  
-  ;; Inspired by Doom Emacs: Advanced filter groups
-  (setq ibuffer-saved-filter-groups
-	'(("default"
-	   ("Projects"
-	    (and (derived-mode . 'prog-mode)
-		 (not (string-match-p "\*Completions" (buffer-name)))
-		 (or (buffer-file-name) (buffer-modified-p))))
-	   ("Magit" (name . "^magit:"))
-	   ("Org" (mode . org-mode))
-	   ("Help" (or (mode . help-mode) (mode . info-mode)))
-	   ("Emacs" (or (name . "^\scratch\
 
-        
+  (setq ibuffer-show-empty-filter-groups nil
+        ibuffer-expert t
+        ibuffer-use-header-line t
+        ibuffer-display-summary nil
+        ibuffer-movement-cycle t
+        ;; Now this format will work correctly
+        ibuffer-formats
+        '((mark read-only modified " "
+                (icon 4 4 :left) ; Provided by nerd-icons-ibuffer
+                (name 30 30 :left :elide)
+                " "
+                (size-h 9 9 :right)
+                " "
+                (mode 16 16 :left :elide)
+                " "
+                filename-and-process))
+        ibuffer-saved-filter-groups
+        '(("default"
+           ("Magit" (name . "^magit:"))
+           ("Org"   (mode . "org-mode"))
+           ("Help"  (or (mode . "help-mode") (mode . "info-mode")))
+           ("Emacs" (or (name . "^\\*scratch\\*$")
+                        (name . "^\\*Messages\\*$")))
+           ;; Filter rule to hide buffers starting or ending with *
+           ("Files" (and (visiting-file)
+                         (not (or (string-match-p "^\\*" (buffer-name))
+                                  (string-match-p "\\*$" (buffer-name)))))))))
 
-      
-
-")
-			(name . "^\dashboard\$"))))))
-  
-  ;; Automatically apply the filter groups and keybindings when ibuffer is opened
   (add-hook 'ibuffer-mode-hook
-	    (lambda ()
-	      (ibuffer-switch-to-saved-filter-groups "default"))))
+            (lambda ()
+              (ibuffer-switch-to-saved-filter-groups "default"))))
 #+end_src
 
 ** Nerd Icons Integration
