@@ -1,0 +1,270 @@
+* LaTeX Environment
+This section configures a definitive, state-of-the-art LaTeX authoring environment within Emacs. It merges the modern, all-in-one Tectonic typesetting engine with the intelligence of the Texlab language server. This final version incorporates advanced programmatic snippet generation for unparalleled speed in writing mathematical and structured documents, a utility for managing project-local packages, and further UI refinements for a clean and efficient workflow.
+
+** Dependencies
+This configuration relies on a few helper packages. We ensure they are loaded here.
+
+#+begin_src emacs-lisp
+(use-package f) ; File and directory manipulation library, needed for project utilities
+#+end_src
+
+** Core: AUCTeX, Tectonic & PDF Tools
+This is the engine room of our setup. We configure =AUCTeX= to use Tectonic, ensuring fast, reproducible builds and automatic cleanup of auxiliary files. We also refine the UI by scaling section headers and LaTeX previews, and add =outline-minor-mode= for better document navigation.
+
+#+begin_src emacs-lisp
+(use-package tex
+  :ensure auctex
+  :defer t
+  :init
+  ;; Set Tectonic as the default TeX engine
+  (setq-default TeX-engine 'tectonic)
+  :custom
+  ;; Use pdf-tools for viewing and enable SyncTeX
+  (TeX-view-program-selection '((output-pdf "PDF Tools")))
+  (TeX-source-correlate-mode t)
+  (TeX-source-correlate-start-server t)
+  ;; Configure AUCTeX to recognize Tectonic
+  (TeX-command-list
+   '(("Tectonic" "tectonic -X compile %s -o %S" TeX-run-command nil t
+      :help "Run Tectonic typesetting engine")
+     ("BibTeX" "bibtex %s" TeX-run-bibtex nil nil)
+     ("MakeIndex" "makeindex %s" TeX-run-index nil nil)))
+  ;; Make the math menu use unicode symbols
+  (LaTeX-math-menu-unicode t)
+  ;; Make section headers larger for better visual separation
+  (font-latex-fontify-sectioning '1.3)
+  ;; Scale inline previews (e.g., in Org mode) for better readability
+  (preview-scale-function 1.4)
+  :config
+  ;; A robust compilation function that cleans up auxiliary files on success
+  (defun ar/tex-compile-and-clean ()
+    "Compile the LaTeX file with Tectonic and clean auxiliary files on success."
+    (interactive)
+    (let ((TeX-clean-extensions
+           '(".aux" ".bbl" ".blg" ".log" ".out" ".toc" ".fls" ".fdb_latexmk")))
+      (TeX-command-master nil (lambda () (TeX-clean)))))
+
+  ;; Ensure AUCTeX loads its styles for common packages
+  (setq TeX-parse-self t)
+  (setq TeX-auto-save t)
+
+  ;; Prevent prettify-symbols from changing -- and ---
+  (when (boundp 'tex--prettify-symbols-alist)
+    (setq tex--prettify-symbols-alist
+          (seq-remove (lambda (x) (member (car x) '("--" "---")))
+                      tex--prettify-symbols-alist)))
+
+  ;; Add hooks for a better editing experience
+  (add-hook 'LaTeX-mode-hook
+            (lambda ()
+              (outline-minor-mode)
+              (rainbow-delimiters-mode))))
+
+(use-package pdf-tools
+  :ensure t
+  :config
+  (pdf-tools-install :no-query)
+  (setq-default pdf-view-display-size 'fit-width)
+  (add-hook 'pdf-view-mode-hook 'pdf-view-fit-width-to-window))
+
+(use-package tex-fold
+  :ensure t
+  :hook (LaTeX-mode . tex-fold-mode))
+#+end_src
+
+** LSP Integration (Texlab)
+We integrate =texlab= via =eglot= for intelligent, real-time feedback, including completion, diagnostics, and code navigation. The configuration ensures =texlab= itself uses Tectonic for consistency.
+
+#+begin_src emacs-lisp
+(general-with-eval-after-load 'eglot
+  :ensure nil ; Already configured in your setup
+  :config
+  ;; Register texlab for LaTeX modes
+  (add-to-list 'eglot-server-programs '((latex-mode tex-mode) . ("texlab"))))
+#+end_src
+
+** Writing Enhancements & Programmatic Snippets
+This section dramatically accelerates writing. We combine =cdlatex= and =LaaS= with a powerful programmatic snippet generation system. Instead of defining snippets one-by-one, we generate them from lists, providing a fast and consistent prefix-based system for inserting Greek letters, math symbols, and sectioning commands.
+
+#+begin_src emacs-lisp
+(use-package cdlatex
+  :hook ((LaTeX-mode . cdlatex-mode)
+         (org-mode . cdlatex-mode)))
+
+(use-package laas
+  :hook (LaTeX-mode . laas-mode))
+
+(use-package auto-activating-snippets
+  :hook (LaTeX-mode . auto-activating-snippets-mode))
+
+(use-package yasnippet
+  :ensure nil ; Already configured
+  :config
+  ;; --- Programmatic Snippet Generation ---
+  (let* ((greek-alphabet
+          '(("a" . "\\alpha") ("b" . "\\beta") ("g" . "\\gamma") ("d" . "\\delta")
+            ("e" . "\\epsilon") ("z" . "\\zeta") ("h" . "\\eta") ("th" . "\\theta")
+            ("i" . "\\iota") ("k" . "\\kappa") ("l" . "\\lambda") ("m" . "\\mu")
+            ("n" . "\\nu") ("x" . "\\xi") ("p" . "\\pi") ("r" . "\\rho")
+            ("s" . "\\sigma") ("t" . "\\tau") ("u" . "\\upsilon") ("ph" . "\\phi")
+            ("ch" . "\\chi") ("ps" . "\\psi") ("o" . "\\omega")))
+         (greek-alphabet-full (append greek-alphabet
+                                      (mapcar (lambda (g) (cons (upcase (car g)) (concat "\\" (capitalize (substring (cdr g) 1)))))
+                                              greek-alphabet)))
+         (math-symbols
+          '(("x" . "\\times") ("." . "\\cdot") ("inv" . "^{-1}") ("inf" . "\\infty")
+            ("v" . "\\forall") ("e" . "\\exists") ("d" . "\\partial")
+            ("c" . "\\cap") ("u" . "\\cup") ("0" . "\\emptyset") ("=" . "\\equiv")
+            ("!=" . "\\neq") (">=" . "\\geq") ("<=" . "\\leq") ("->" . "\\to")
+            ("=>" . "\\Rightarrow") ("<-" . "\\leftarrow") ("<=" . "\\Leftarrow")
+            ("s" . "\\sum_{$1}^{$2}$0") ("p" . "\\prod_{$1}^{$2}$0")
+            ("i" . "\\int_{$1}^{$2}$0") ("lim" . "\\lim_{$1 \\to $2}$0")
+            ("^" . "\\widehat{$1}$0") ("_" . "\\overline{$1}$0") ("~" . "\\sim")))
+         (section-commands
+          '(("ch" . "chapter") ("sec" . "section") ("ssec" . "subsection")
+            ("sssec" . "subsubsection") ("par" . "paragraph"))))
+
+    ;; Snippets for Greek letters (e.g., 'a -> \alpha)
+    (yas-define-snippets 'latex-mode
+      (mapcar (lambda (g) `(,(concat "'" (car g)) ,(cdr g))) greek-alphabet-full))
+
+    ;; Snippets for math blackboard bold (e.g., `A -> \mathbb{A})
+    (yas-define-snippets 'latex-mode
+      (mapcar (lambda (c) `(,(concat "`" c) ,(concat "\\mathbb{" c "}")))
+              (append (mapcar #'number-to-string (number-sequence 65 90)) ; A-Z
+                      (list "R" "C" "N" "Z" "Q")))) ; Common sets
+
+    ;; Snippets for math symbols (e.g., ;x -> \times)
+    (yas-define-snippets 'latex-mode
+      (mapcar (lambda (m) `(,(concat ";" (car m)) ,(cdr m))) math-symbols))
+
+    ;; Programmatically create section snippets (sec, sec*, secl)
+    (dolist (s section-commands)
+      (let* ((key (car s))
+             (cmd (cdr s))
+             (base-template (format "\\%s{$1}\n$0" cmd))
+             (star-template (format "\\%s*{$1}\n$0" cmd))
+             (label-template (format "\\%s{$1} \\label{%s:$2}\n$0" cmd (substring key 0 3))))
+        (yas-define-snippets 'latex-mode
+          `((,key ,base-template ,cmd)
+            (,(concat key "*") ,star-template ,(concat cmd "*"))
+            (,(concat key "l") ,label-template ,(concat cmd " with label"))))))))
+#+end_src
+
+** Citation Management
+This creates a powerful and integrated citation workflow using =citar=, =org-roam=, and =embark=. It allows for quick insertion of citations, easy creation of literature notes, and contextual actions.
+
+#+begin_src emacs-lisp
+(use-package citar
+  :custom
+  (citar-bibliography '("~/org/references.bib"))
+  (citar-notes-paths '("~/org/roam/"))
+  (citar-at-point-function 'embark-act)
+  :config
+  (setq citar-symbols
+        `((file ,(nerd-icons-mdicon "nf-md-file_pdf_box") . " ")
+          (note ,(nerd-icons-mdicon "nf-md-note") . " ")
+          (link ,(nerd-icons-mdicon "nf-md-link") . " ")))
+  (setq citar-templates
+        '((main . "${author editor:30} ${year}   ${title:80}")
+          (suffix . "  ${=type=:12} ${=key=:20}")
+          (preview . "${author editor} (${year}). *${title}*. ${journal magazine:}. ${volume}(${issue}). ${pages}.")
+          (note . "Notes for ${author editor} (${year}) - *${title}*"))))
+
+(use-package citar-capf :ensure t :after (citar cape)
+  :config (add-to-list 'completion-at-point-functions #'citar-capf))
+
+(use-package citar-embark :ensure t :after (citar embark)
+  :config (citar-embark-mode))
+
+(use-package org-roam-bibtex :ensure t :after (org-roam)
+  :config
+  (require 'org-roam-bibtex)
+  (setq orb-templates
+        '(("r" "ref" plain (function org-roam-capture--get-point) ""
+           :file-name "${citekey}"
+           :head "#+TITLE: ${title}\n#+AUTHOR: ${author-or-editor}\n#+ROAM_KEY: ${ref}\n#+ROAM_TAGS: lit-note\n\n* Summary\n\n* Quotes\n\n* My Thoughts\n\n* Related\n\n- ${citekey}"
+           :unnarrowed t))))
+
+(use-package citar-org-roam :after (citar org-roam)
+  :config (citar-org-roam-mode 1))
+
+(use-package consult-bibtex :after consult)
+#+end_src
+
+** Org Mode LaTeX Export & Project Utilities
+This section enhances Org mode's LaTeX export and adds helper functions for managing project-specific style files.
+
+#+begin_src emacs-lisp
+(general-with-eval-after-load 'org
+  :custom
+  (org-latex-compiler "tectonic")
+  (org-latex-pdf-process '("tectonic -X compile %f"))
+  (org-latex-default-packages-alist
+   '(("" "graphicx" t) ("" "longtable" nil) ("" "booktabs" t)
+     ("" "amsmath" t) ("" "amssymb" t) ("" "geometry" t)
+     ("margin=1in" "geometry" nil) ("" "microtype" t)
+     ("hyphens" "url" t) ("hidelinks" "hyperref" t)))
+  (org-latex-logfiles-extensions
+   '("lof" "lot" "tex~" "aux" "bbl" "blg" "log" "out" "toc" "fls" "fdb_latexmk")))
+
+;; Project-specific utilities
+(defun ar/latex-find-project-packages ()
+  "Find all .sty files in the project's 'styles' directory or parent directories."
+  (let ((search-dirs '("./styles/" "../styles/" "./" "../")))
+    (seq-uniq
+     (seq-sort #'string-lessp
+               (seq-filter #'identity
+                           (mapcan (lambda (dir)
+                                     (when (file-directory-p dir)
+                                       (directory-files dir t "\\.sty$")))
+                                   search-dirs))))))
+
+(defun ar/latex-insert-project-packages (format-str)
+  "Insert project .sty files using FORMAT-STR."
+  (let ((packages (ar/latex-find-project-packages)))
+    (if (not packages)
+        (message "No local .sty files found.")
+      (insert (string-join (mapcar (lambda (file)
+                                     (format format-str
+                                             (file-name-sans-extension
+                                              (file-relative-name file default-directory))))
+                                   packages)
+                           "\n")))))
+
+(defun ar/latex-insert-packages-tex ()
+  "Insert \\usepackage lines for local .sty files."
+  (interactive)
+  (ar/latex-insert-project-packages "\\usepackage{%s}"))
+
+(defun ar/latex-insert-packages-org ()
+  "Insert #+LATEX_HEADER lines for local .sty files."
+  (interactive)
+  (ar/latex-insert-project-packages "#+LATEX_HEADER: \\usepackage{%s}"))
+#+end_src
+
+** Keybindings
+A dedicated, mode-specific leader menu for LaTeX provides quick access to compilation, viewing, citation, and project utility commands.
+
+#+begin_src emacs-lisp
+(general-with-eval-after-load 'general
+  :ensure nil ; Already configured
+  :config
+  (general-define-key
+   :keymaps 'latex-mode-map
+   :prefix "SPC m"
+   "c" '(:ignore t :wk "Compile")
+   "cc" '(ar/tex-compile-and-clean :wk "Compile & Clean")
+   "cv" '(TeX-view :wk "View Output")
+   "ce" '(TeX-error-overview :wk "Error Overview")
+   "ck" '(TeX-clean :wk "Clean Aux Files")
+   "i" '(:ignore t :wk "Insert")
+   "ic" '(citar-insert-citation :wk "Insert Citation")
+   "ip" '(ar/latex-insert-packages-tex :wk "Insert Project Packages")
+   "il" '(LaTeX-insert-label :wk "Insert Label")
+   "ir" '(LaTeX-insert-ref :wk "Insert Reference")
+   "e" '(:ignore t :wk "Environment")
+   "ee" '(LaTeX-environment :wk "Insert Environment")
+   "s" '(:ignore t :wk "Section")
+   "ss" '(LaTeX-section :wk "Insert Section")))
+#+end_src

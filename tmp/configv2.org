@@ -1,3 +1,4 @@
+
 #+TITLE: Emacs Configuration
 #+AUTHOR: Ahsanur Rahman
 #+STARTUP: overview
@@ -275,22 +276,12 @@ This section configures the entire completion system, built around Vertico, Corf
 (use-package corfu
   :init (global-corfu-mode)
   :custom
-  ;; FIX 2: Ensure Corfu cycles correctly and doesn't quit at boundaries.
-  ;; The `corfu-cycle` setter should handle `corfu-quit-at-boundary`,
-  ;; but we set them explicitly for robustness.
   (corfu-cycle t)
-  (corfu-quit-at-boundary nil)
-  (corfu-quit-no-match nil)
   (corfu-auto t)
   (corfu-auto-delay 0.2)
   :config
   (corfu-popupinfo-mode)
-  (corfu-history-mode 1)
-  ;; FIX 1 & 2: The custom function `my/corfu-or-org-expand` and its
-  ;; binding in `corfu-map` have been removed. We now handle the Org-mode
-  ;; case separately and let Corfu's default `corfu-cycle` behavior
-  ;; manage TAB presses when its popup is active.
-  )
+  (corfu-history-mode 1))
 
 (use-package nerd-icons-corfu
   :after (corfu nerd-icons)
@@ -333,7 +324,7 @@ This section configures the entire completion system, built around Vertico, Corf
   (setq xref-show-xrefs-function #'consult-xref
         xref-show-definitions-function #'consult-xref))
 
-;;(use-package consult-flymake :after (consult flymake))
+(use-package consult-flymake :ensure nil :after (consult flymake))
 (use-package consult-dir :after consult)
 
 (use-package embark
@@ -351,13 +342,15 @@ This section configures the entire completion system, built around Vertico, Corf
                  nil
                  (window-parameters (mode-line-format . none)))))
 
+(use-package embark
+  :after (vertico consult)
+  :bind (("C-." . embark-act)
+         ("C-;" . embark-dwim)))
+
 (use-package embark-consult
   :hook
   (embark-collect-mode . consult-preview-at-point-mode))
 #+end_src
-
-#+RESULTS:
-: #s(hash-table data (:use-package (26744 26776 212840 82000) :init (26744 26776 212835 682000) :init-secs (0 0 9 428000) :use-package-secs (0 0 24 235000)))
 
 * File Management
 This section configures Dired and Dirvish for powerful file management.
@@ -473,7 +466,6 @@ This section configures tools for programming, including Tree-sitter for parsing
 #+end_src
 
 ** LSP, Diagnostics, and Formatting
-
 #+begin_src emacs-lisp
 (use-package eglot
   :ensure nil
@@ -529,59 +521,7 @@ This section configures tools for programming, including Tree-sitter for parsing
   :hook (prog-mode . treesit-fold-mode))
 #+end_src
 
-* Snippets
-This section configures the YASnippet engine and its integration with the completion framework.
-
-#+begin_src emacs-lisp
-(use-package yasnippet
-  :init
-  (yas-global-mode 1)
-  :config
-  (setq yas-snippet-dirs
-        (list (expand-file-name "snippets" user-emacs-directory)))
-  ;; Create the custom snippets directory if it doesn't exist
-  (unless (file-directory-p (car yas-snippet-dirs))
-    (make-directory (car yas-snippet-dirs) t))
-  (yas-reload-all))
-
-(use-package yasnippet-snippets
-  :after yasnippet)
-
-(use-package yasnippet-capf
-  :after (yasnippet cape)
-  :config
-  (add-to-list 'completion-at-point-functions #'yasnippet-capf)
-  ;; This function is added to `completion-at-point-functions` in the Cape setup.
-  ;; It allows snippets to appear as candidates in the Corfu completion popup.
-  (setq yasnippet-capf-yas-trigger-as-primary-key t))
-
-(use-package consult-yasnippet
-  :after (consult yasnippet)
-  :config
-  ;; This package provides a Consult interface for searching and inserting snippets.
-  ;; The keybinding is set in the "General Keybindings" section.
-  (setq consult-yasnippet-category-icon-alist
-        '((t . "»")
-          ("Emacs Lisp" . "λ")
-          ("Text" . "¶")
-          ("Org" . "★")
-          ("Python" . "🐍"))))
-#+end_src
-
 * Org Mode
-** Helper Function
-#+begin_src emacs-lisp
-(defun my-org-tab-handler ()
-  "Handle TAB in Org mode.
-Expand structure template, or cycle Corfu, or do default org action."
-  (interactive)
-  (if (org-at-structure-template-p)
-      (call-interactively #'org-structure-template-block)
-    (if (and (bound-and-true-p corfu-mode) (corfu--visible-p))
-        (corfu-next)
-      ;; Fallback to default Org TAB action (indent, cycle visibility, etc.)
-      (call-interactively #'org-cycle))))
-#+end_src
 
 ** Directory and Path Setup
 #+begin_src emacs-lisp
@@ -624,7 +564,6 @@ A comprehensive configuration for Org as a life-management system.
   :hook ((org-mode . visual-line-mode)
          (org-mode . org-indent-mode)
          (org-mode . auto-fill-mode)
-         (org-mode . cdlatex-mode)
          (org-mode . flyspell-mode))
 
   :custom
@@ -637,6 +576,8 @@ A comprehensive configuration for Org as a life-management system.
   (org-startup-folded 'overview)
   (org-ellipsis " ⤵")
   (org-hide-emphasis-markers t)
+  (org-src-fontify-natively t)
+  (org-src-tab-acts-natively t)
   (org-confirm-babel-evaluate nil)
   (org-pretty-entities t)
   (org-startup-with-inline-images t)
@@ -646,10 +587,7 @@ A comprehensive configuration for Org as a life-management system.
   (org-src-fontify-natively t)
   (org-src-tab-acts-natively t)
   (org-src-preserve-indentation t)
-  ;; FIX 3: Change window setup for editing source blocks.
-  ;; 'split-window-below' will open the edit buffer in a new window below
-  ;; the current one, instead of taking over the whole window.
-  (org-src-window-setup 'split-window-below)
+  (org-src-window-setup 'current-window)
   (org-edit-src-content-indentation 0)
   (org-confirm-babel-evaluate nil)
 
@@ -679,32 +617,20 @@ A comprehensive configuration for Org as a life-management system.
      ("🚫 DROPPED" . (:foreground "#665c54" :weight bold))))
 
   :config
-  ;; FIX 1: Bind TAB in Org mode to our new handler function.
-  ;; This function will correctly expand structure templates OR cycle Corfu.
-  (define-key org-mode-map (kbd "TAB") #'my-org-tab-handler))
-#+end_src
-
-** Org Babel Languages
-#+begin_src emacs-lisp
-(with-eval-after-load 'org
+  ;; Load babel languages
   (org-babel-do-load-languages
    'org-babel-load-languages
    '((emacs-lisp . t)
+     (shell . t)
      (python . t)))
-  
-  (push '("conf-unix" . conf-unix) org-src-lang-modes))
-#+end_src
 
-** Org Structure Templates
-#+begin_src emacs-lisp
-(use-package org-tempo
-  :ensure nil
-  :after org
-  :config
-  (add-to-list 'org-structure-template-alist '("sh" . "src shell"))
+  ;; Add structure templates for easy source block insertion
+  (require 'org-tempo)
   (add-to-list 'org-structure-template-alist '("el" . "src emacs-lisp"))
+  (add-to-list 'org-structure-template-alist '("sh" . "src shell"))
   (add-to-list 'org-structure-template-alist '("py" . "src python")))
 #+end_src
+
 ** Org Roam
 This is the core of the setup, turning Org Roam into a visual and interactive knowledge graph.
 
@@ -896,65 +822,41 @@ This is the core of the setup, turning Org Roam into a visual and interactive kn
 
 (use-package org-fragtog
   :hook (org-mode . org-fragtog-mode))
-#+end_src
 
-** Visual
+;;;; --- NEW --- Modern UI for Org Mode --- NEW ---
 
-#+begin_src emacs-lisp
 (use-package org-modern
   :hook (org-mode . org-modern-mode)
   :config
-  ;; This package provides a cleaner, more modern look for Org buffers.
+  ;; This modernizes the look of Org buffers.
   (setq
-   ;; Hide the leading stars, replacing them with a subtle character.
-   org-modern-hide-stars "· "
-
-   ;; Customize the headline bullets. More levels can be added.
+   ;; Edit the following to change the face of the stars.
    org-modern-star '("◉" "○" "◈" "◇" "◆" "▷")
-
-   ;; Use more pleasant bullets for lists.
-   org-modern-list '((43 . "➤") (45 . "–") (42 . "•"))
-
-   ;; Prettify Org table styles to be more minimal.
+   ;; Prettify Org table styles
    org-modern-table-vertical 1
    org-modern-table-horizontal 0.1
-
-   ;; Prettify block delimiters. The second element is the end marker.
+   ;; Prettify block names
    org-modern-block-name
-   '(("src" "»" "«")
-     ("example" "»" "«")
-     ("quote" "❝" "❞"))
-
-   ;; Style TODO keywords directly in the headline.
-   ;; This complements the main `org-todo-keyword-faces`.
-   org-modern-todo-faces
-   '(("☛ TODO" . (:foreground "#fb4934" :weight bold))
-     ("⚡ NEXT" . (:foreground "#fabd2f" :weight bold))
-     ("🔄 PROG" . (:foreground "#83a598" :weight bold))
-     ("⏳ WAIT" . (:foreground "#d3869b" :weight bold))
-     ;; Use a background for completed states to make them stand out.
-     ("✅ DONE" . (:background "#b8bb26" :foreground "#3c3836" :weight bold))
-     ("❌ CANCELLED" . (:strike-through t :foreground "#928374"))
-     ("🎯 GOAL" . (:foreground "#b16286" :weight bold :box t))
-     ("🏆 ACHIEVED" . (:background "#689d6a" :foreground "#3c3836" :weight bold :box t)))
-
-   ;; Style tags with a subtle box, inspired by Doom Emacs.
+   '(("src" . "»")
+     ("example" . "»")
+     ("quote" . "❝"))
+   ;; Hide the leading stars
+   org-modern-hide-stars "· "
+   ;; Prettify list bullets
+   org-modern-list '((43 . "➤") (45 . "–") (42 . "•"))
+   ;; Style tags
    org-modern-tag-faces
-   `((:foreground ,(face-attribute 'default :foreground) :weight bold :box (:line-width (1 . -1) :color "#504945")))))
+   `((:foreground ,(face-attribute 'default :foreground) :weight bold :box t))))
 
 (use-package org-appear
   :hook (org-mode . org-appear-mode)
   :config
   ;; This package toggles the visibility of emphasis markers and links
   ;; when the point is on them, providing a cleaner look while editing.
+  ;; This is the setup from Doom Emacs' pretty.el module.
   (setq org-appear-autoemphasis t
         org-appear-autolinks t
-        org-appear-autosubmarkers t)
-  ;; Add a keybinding to manually toggle all markers on/off.
-  ;; Useful for presentations or a distraction-free reading mode.
-  (general-define-key
-   :keymaps 'org-mode-map
-   "C-c C-x a" #'org-appear-toggle))
+        org-appear-autosubmarkers t))
 #+end_src
 
 * Spelling
@@ -977,427 +879,9 @@ This is the core of the setup, turning Org Roam into a visual and interactive kn
   :config
   (ultra-scroll-mode 1))
 #+end_src
-* LaTeX Environment
-This section configures a definitive, state-of-the-art LaTeX authoring environment within Emacs. It merges the modern, all-in-one Tectonic typesetting engine with the intelligence of the Texlab language server. This final version incorporates advanced programmatic snippet generation for unparalleled speed in writing mathematical and structured documents, a utility for managing project-local packages, and further UI refinements for a clean and efficient workflow.
-
-** Dependencies
-This configuration relies on a few helper packages. We ensure they are loaded here.
-
-#+begin_src emacs-lisp
-(use-package f) ; File and directory manipulation library, needed for project utilities
-#+end_src
-
-** Core: AUCTeX, Tectonic & PDF Tools
-This is the engine room of our setup. We configure =AUCTeX= to use Tectonic, ensuring fast, reproducible builds and automatic cleanup of auxiliary files. We also refine the UI by scaling section headers and LaTeX previews, and add =outline-minor-mode= for better document navigation.
-
-#+begin_src emacs-lisp
-(use-package tex
-  :ensure auctex
-  :defer t
-  :init
-  ;; Set Tectonic as the default TeX engine
-  (setq-default TeX-engine 'tectonic)
-  :custom
-  ;; Use pdf-tools for viewing and enable SyncTeX
-  (TeX-view-program-selection '((output-pdf "PDF Tools")))
-  (TeX-source-correlate-mode t)
-  (TeX-source-correlate-start-server t)
-  ;; Configure AUCTeX to recognize Tectonic
-  (TeX-command-list
-   '(("Tectonic" "tectonic -X compile %s -o %S" TeX-run-command nil t
-      :help "Run Tectonic typesetting engine")
-     ("BibTeX" "bibtex %s" TeX-run-bibtex nil nil)
-     ("MakeIndex" "makeindex %s" TeX-run-index nil nil)))
-  ;; Make the math menu use unicode symbols
-  (LaTeX-math-menu-unicode t)
-  ;; Make section headers larger for better visual separation
-  (font-latex-fontify-sectioning '1.3)
-  ;; Scale inline previews (e.g., in Org mode) for better readability
-  (preview-scale-function 1.4)
-  :config
-  ;; A robust compilation function that cleans up auxiliary files on success
-  (defun ar/tex-compile-and-clean ()
-    "Compile the LaTeX file with Tectonic and clean auxiliary files on success."
-    (interactive)
-    (let ((TeX-clean-extensions
-           '(".aux" ".bbl" ".blg" ".log" ".out" ".toc" ".fls" ".fdb_latexmk")))
-      (TeX-command-master nil (lambda () (TeX-clean)))))
-
-  ;; Ensure AUCTeX loads its styles for common packages
-  (setq TeX-parse-self t)
-  (setq TeX-auto-save t)
-
-  ;; Prevent prettify-symbols from changing -- and ---
-  (when (boundp 'tex--prettify-symbols-alist)
-    (setq tex--prettify-symbols-alist
-          (seq-remove (lambda (x) (member (car x) '("--" "---")))
-                      tex--prettify-symbols-alist)))
-
-  ;; Add hooks for a better editing experience
-  (add-hook 'LaTeX-mode-hook
-            (lambda ()
-              (tex-fold-mode)
-              (outline-minor-mode)
-              (rainbow-delimiters-mode))))
-
-(use-package pdf-tools
-  :config
-  (pdf-tools-install :no-query)
-  (setq-default pdf-view-display-size 'fit-width)
-  (add-hook 'pdf-view-mode-hook 'pdf-view-fit-width-to-window))
-#+end_src
-
-** LSP Integration (Texlab)
-We integrate =texlab= via =eglot= for intelligent, real-time feedback, including completion, diagnostics, and code navigation. The configuration ensures =texlab= itself uses Tectonic for consistency.
-
-#+begin_src emacs-lisp
-(with-eval-after-load 'eglot
-  (add-to-list 'eglot-server-programs '((latex-mode tex-mode) . ("texlab"))))
-#+end_src
-
-** Writing Enhancements & Programmatic Snippets
-This section dramatically accelerates writing. We combine =cdlatex= and =LaaS= with a powerful programmatic snippet generation system. Instead of defining snippets one-by-one, we generate them from lists, providing a fast and consistent prefix-based system for inserting Greek letters, math symbols, and sectioning commands.
-
-*** cdlatex
-#+begin_src emacs-lisp
-(use-package cdlatex
-  :hook ((LaTeX-mode . cdlatex-mode)
-         (org-mode . cdlatex-mode)))
-#+end_src
-
-*** snippets
-
-#+begin_src emacs-lisp
-(with-eval-after-load 'yasnippet
-  ;; --- Programmatic Snippet Generation for LaTeX ---
-  ;; This section programmatically generates a large number of context-aware
-  ;; snippets for LaTeX, dramatically speeding up the process of writing
-  ;; structured documents and complex mathematical equations. It defines
-  ;; several categories of snippets, each with a distinct and memorable prefix.
-  (let* (;; --- Source Lists for Snippet Generation ---
-
-         ;; -- Math Snippets --
-         (greek-alphabet
-          '(("a" . "\\alpha") ("b" . "\\beta") ("g" . "\\gamma") ("d" . "\\delta")
-            ("e" . "\\epsilon") ("z" . "\\zeta") ("h" . "\\eta") ("th" . "\\theta")
-            ("i" . "\\iota") ("k" . "\\kappa") ("l" . "\\lambda") ("m" . "\\mu")
-            ("n" . "\\nu") ("x" . "\\xi") ("p" . "\\pi") ("r" . "\\rho")
-            ("s" . "\\sigma") ("t" . "\\tau") ("u" . "\\upsilon") ("ph" . "\\phi")
-            ("ch" . "\\chi") ("ps" . "\\psi") ("o" . "\\omega")))
-         (greek-alphabet-full (append greek-alphabet
-                                      (mapcar (lambda (g) (cons (upcase (car g)) (concat "\\" (capitalize (substring (cdr g) 1)))))
-                                              greek-alphabet)))
-         (math-symbols
-          '(;; Relations and Operators
-            ("x" . "\\times") ("." . "\\cdot") ("o" . "\\circ") ("*" . "\\ast")
-            ("div" . "\\div") ("pm" . "\\pm") ("mp" . "\\mp")
-            ("=" . "\\equiv") ("!=" . "\\neq") (">=" . "\\geq") ("<=" . "\\leq")
-            ("<<" . "\\ll") (">>" . "\\gg") ("~" . "\\sim")
-            ("prop" . "\\propto")
-            ;; Arrows
-            ("->" . "\\to") ("-->" . "\\longrightarrow")
-            ("=>" . "\\Rightarrow") ("==>" . "\\Longrightarrow")
-            ("<-" . "\\leftarrow") ("<--" . "\\longleftarrow")
-            ("<==" . "\\Leftarrow") ("<==L" . "\\Longleftarrow")
-            ("<->" . "\\leftrightarrow") ("<-->" . "\\longleftrightarrow")
-            ("<=>" . "\\Leftrightarrow") ("<==>" . "\\Longleftrightarrow")
-            ;; Logic and Sets
-            ("v" . "\\forall") ("e" . "\\exists") ("!e" . "\\nexists")
-            ("in" . "\\in") ("!in" . "\\notin") ("ni" . "\\ni")
-            ("sub" . "\\subset") ("sup" . "\\supset") ("sube" . "\\subseteq")
-            ("supe" . "\\supseteq")
-            ("c" . "\\cap") ("u" . "\\cup") ("U" . "\\bigcup") ("C" . "\\bigcap")
-            ("0" . "\\emptyset")
-            ;; Calculus and Analysis
-            ("inf" . "\\infty") ("d" . "\\partial") ("grad" . "\\nabla")
-            ("s" . "\\sum_{$1}^{$2}$0") ("p" . "\\prod_{$1}^{$2}$0")
-            ("i" . "\\int_{$1}^{$2}$0") ("ii" . "\\iint_{$1}^{$2}$0") ("iii" . "\\iiint_{$1}^{$2}$0")
-            ("lim" . "\\lim_{$1 \\to $2}$0")
-            ;; Accents & Misc
-            ("^" . "\\hat{$1}$0") ("what" . "\\widehat{$1}$0")
-            ("_" . "\\bar{$1}$0") ("obar" . "\\overline{$1}$0")
-            ("vec" . "\\vec{$1}$0")
-            ("til" . "\\tilde{$1}$0") ("wtil" . "\\widetilde{$1}$0")
-            ("dot" . "\\dot{$1}$0") ("ddot" . "\\ddot{$1}$0")
-            ("inv" . "^{-1}") ("sq" . "^{2}") ("cb" . "^{3}")
-            ("..." . "\\dots") ("cdots" . "\\cdots")))
-         (math-environments
-          '(("eq" . "equation") ("eq*" . "equation*")
-            ("ali" . "align") ("ali*" . "align*")
-            ("gat" . "gather") ("gat*" . "gather*")
-            ("spl" . "split") ("cas" . "cases")
-            ("mat" . "matrix") ("pmat" . "pmatrix") ("bmat" . "bmatrix")
-            ("vmat" . "vmatrix") ("Vmat" . "Vmatrix")))
-         (math-structures
-          '(("f" . "\\frac{$1}{$2}$0")
-            ("c" . "\\binom{$1}{$2}$0")
-            ("sq" . "\\sqrt{$1}$0")
-            ("sqr" . "\\sqrt[$2]{$1}$0")))
-         (math-delimiters ;; <<< THIS LIST IS NOW FIXED
-          '(("lr(" "\\left( $0 \\right)")
-            ("lr[" "\\left[ $0 \\right]")
-            ("lr{" "\\left\\{ $0 \\right\\}")
-            ("lr|" "\\left| $0 \\right|")
-            ("lr||" "\\left\\| $0 \\right\\|")))
-
-         ;; -- General Document Snippets --
-         (section-commands
-          '(("ch" . "chapter") ("sec" . "section") ("ssec" . "subsection")
-            ("sssec" . "subsubsection") ("par" . "paragraph")))
-         (list-environments
-          '(("it" . "itemize") ("en" . "enumerate") ("de" . "description")))
-         (theorem-environments
-          '(("thm" . "theorem") ("lem" . "lemma") ("cor" . "corollary")
-            ("prop" . "proposition") ("defn" . "definition") ("rem" . "remark")
-            ("ex" . "example") ("sol" . "solution") ("proof" . "proof")))
-         (direct-snippets
-          `(;; Boilerplate for a standard article
-            ("article"
-             "
-\\documentclass[11pt]{article}
-\\usepackage[utf8]{inputenc}
-\\usepackage{amsmath}
-\\usepackage{amssymb}
-\\usepackage{graphicx}
-\\usepackage[hidelinks]{hyperref}
-
-\\title{${1:Title}}
-\\author{${2:Author}}
-\\date{\\today}
-
-\\begin{document}
-
-\\maketitle
-
-$0
-
-\\end{document}
-"
-             "Full Article Boilerplate")
-
-            ;; Figure environment
-            ("fig"
-             "\\begin{figure}[htbp]
-  \\centering
-  \\includegraphics[width=0.8\\textwidth]{${1:path/to/image}}
-  \\caption{${2:Caption}}
-  \\label{fig:${3:label}}
-\\end{figure}
-$0"
-             "Figure Environment")
-
-            ;; Table environment
-            ("tab"
-             "\\begin{table}[htbp]
-  \\centering
-  \\caption{${1:Caption}}
-  \\label{tab:${2:label}}
-  \\begin{tabular}{${3:lcr}}
-    \\hline
-    ${4:Header 1} & ${5:Header 2} & ${6:Header 3} \\\\
-    \\hline
-    $0
-    \\hline
-  \\end{tabular}
-\\end{table}"
-             "Table Environment")
-
-            ;; Referencing snippets
-            ("ref" "\\ref{${1:label}}$0")
-            ("eqref" "\\eqref{eq:${1:label}}$0"))))
-
-    ;; --- Snippet Definition ---
-    ;; Each call to `yas-define-snippets` registers a new set of snippets
-    ;; for `latex-mode`.
-
-    ;; Define directly specified snippets (article, fig, etc.)
-    (yas-define-snippets 'latex-mode direct-snippets)
-
-    ;; Greek letters (e.g., 'a -> \alpha)
-    (yas-define-snippets 'latex-mode
-      (mapcar (lambda (g) `(,(concat "'" (car g)) ,(cdr g))) greek-alphabet-full))
-
-    ;; Math blackboard bold (e.g., `A -> \mathbb{A})
-    (yas-define-snippets 'latex-mode
-      (mapcar (lambda (c) `(,(concat "`" c) ,(concat "\\mathbb{" c "}")))
-              (append (mapcar #'number-to-string (number-sequence 65 90)) ; A-Z
-                      '("R" "C" "N" "Z" "Q"))))
-
-    ;; General math symbols and accents (e.g., ;x -> \times, ;^ -> \hat{})
-    (yas-define-snippets 'latex-mode
-      (mapcar (lambda (m) `(,(concat ";" (car m)) ,(cdr m))) math-symbols))
-
-    ;; Math environments (e.g., ,eq -> \begin{equation}...)
-    (yas-define-snippets 'latex-mode
-      (mapcar (lambda (e) `(,(concat "," (car e))
-                             ,(format "\\begin{%s}\n  $0\n\\end{%s}" (cdr e) (cdr e))))
-              math-environments))
-
-    ;; Math structures (e.g., //f -> \frac{}{})
-    (yas-define-snippets 'latex-mode
-      (mapcar (lambda (s) `(,(concat "//" (car s)) ,(cdr s))) math-structures))
-
-    ;; Auto-pairing delimiters (e.g., lr( -> \left( ... \right))
-    (yas-define-snippets 'latex-mode math-delimiters)
-
-    ;; Sectioning commands (e.g., sec, sec*, secl)
-    (dolist (s section-commands)
-      (let* ((key (car s))
-             (cmd (cdr s))
-             (base-template (format "\\%s{$1}\n$0" cmd))
-             (star-template (format "\\%s*{$1}\n$0" cmd))
-             (label-template (format "\\%s{$1} \\label{%s:$2}\n$0" cmd key)))
-        (yas-define-snippets 'latex-mode
-          `((,key ,base-template ,cmd)
-            (,(concat key "*") ,star-template ,(concat cmd "*"))
-            (,(concat key "l") ,label-template ,(concat cmd " with label"))))))
-
-    ;; List environments (e.g., Bit -> \begin{itemize})
-    (dolist (e list-environments)
-      (let* ((key (car e))
-             (env (cdr e))
-             (item-template (if (string= env "description") "\\item[$1] $0" "\\item $0")))
-        (yas-define-snippets 'latex-mode
-          `((,(concat "B" key) ,(format "\\begin{%s}\n  %s\n\\end{%s}" env item-template env))))))
-
-    ;; Theorem environments (e.g., Bthm -> \begin{theorem}, Bthm* -> with title)
-    (dolist (e theorem-environments)
-      (let* ((key (car e))
-             (env (cdr e))
-             (base-template (format "\\begin{%s}\n  $0\n\\end{%s}" env env))
-             (star-template (format "\\begin{%s}[$1]\n  $0\n\\end{%s}" env env)))
-        (yas-define-snippets 'latex-mode
-          `((,(concat "B" key) ,base-template)
-            (,(concat "B" key "*") ,star-template)))))))
-#+end_src
-
-** Citation Management
-This creates a powerful and integrated citation workflow using =citar=, =org-roam=, and =embark=. It allows for quick insertion of citations, easy creation of literature notes, and contextual actions.
-
-#+begin_src emacs-lisp
-(use-package citar
-  :custom
-  (citar-bibliography '("~/org/references.bib"))
-  (citar-notes-paths '("~/org/roam/"))
-  (citar-at-point-function 'embark-act)
-  :config
-  (setq citar-symbols
-        `((file ,(nerd-icons-mdicon "nf-md-file_pdf_box") . " ")
-          (note ,(nerd-icons-mdicon "nf-md-note") . " ")
-          (link ,(nerd-icons-mdicon "nf-md-link") . " ")))
-  (setq citar-templates
-        '((main . "${author editor:30} ${year}   ${title:80}")
-          (suffix . "  ${=type=:12} ${=key=:20}")
-          (preview . "${author editor} (${year}). *${title}*. ${journal magazine:}. ${volume}(${issue}). ${pages}.")
-          (note . "Notes for ${author editor} (${year}) - *${title}*"))))
-
-(use-package citar-capf
-  :ensure nil
-  :after (citar cape)
-  :config (add-to-list 'completion-at-point-functions #'citar-capf))
-
-(use-package citar-embark :ensure t :after (citar embark)
-  :config (citar-embark-mode))
-
-(use-package org-roam-bibtex
-  :after (org-roam citar)
-  :config
-  (require 'org-roam-bibtex)
-  (setq orb-templates
-        '(("r" "ref" plain (function org-roam-capture--get-point) ""
-           :file-name "${citekey}"
-           :head "#+TITLE: ${title}\n#+AUTHOR: ${author-or-editor}\n#+ROAM_KEY: ${ref}\n#+ROAM_TAGS: lit-note\n\n* Summary\n\n* Quotes\n\n* My Thoughts\n\n* Related\n\n- ${citekey}"
-           :unnarrowed t))))
-
-(use-package citar-org-roam
-  :after (citar org-roam)
-  :config (citar-org-roam-mode 1))
-
-(use-package consult-bibtex
-  :vc (:url "https://github.com/mohkale/consult-bibtex"
-       :branch "main")
-  (with-eval-after-load 'embark
-    (add-to-list 'embark-keymap-alist '(bibtex-completion . consult-bibtex-embark-map))))
-#+end_src
-
-** Org Mode LaTeX Export & Project Utilities
-This section enhances Org mode's LaTeX export and adds helper functions for managing project-specific style files.
-
-#+begin_src emacs-lisp
-(with-eval-after-load 'org
-  (setq org-latex-compiler "tectonic")
-  (setq org-latex-pdf-process '("tectonic -X compile %f"))
-  (setq org-latex-default-packages-alist
-   '(("" "graphicx" t) ("" "longtable" nil) ("" "booktabs" t)
-     ("" "amsmath" t) ("" "amssymb" t) ("" "geometry" t)
-     ("margin=1in" "geometry" nil) ("" "microtype" t)
-     ("hyphens" "url" t) ("hidelinks" "hyperref" t)))
-  (setq org-latex-logfiles-extensions
-   '("lof" "lot" "tex~" "aux" "bbl" "blg" "log" "out" "toc" "fls" "fdb_latexmk")))
-
-;; Project-specific utilities
-(defun ar/latex-find-project-packages ()
-  "Find all .sty files in the project's 'styles' directory or parent directories."
-  (let ((search-dirs '("./styles/" "../styles/" "./" "../")))
-    (seq-uniq
-     (seq-sort #'string-lessp
-               (seq-filter #'identity
-                           (mapcan (lambda (dir)
-                                     (when (file-directory-p dir)
-                                       (directory-files dir t "\\.sty$")))
-                                   search-dirs))))))
-
-(defun ar/latex-insert-project-packages (format-str)
-  "Insert project .sty files using FORMAT-STR."
-  (let ((packages (ar/latex-find-project-packages)))
-    (if (not packages)
-        (message "No local .sty files found.")
-      (insert (string-join (mapcar (lambda (file)
-                                     (format format-str
-                                             (file-name-sans-extension
-                                              (file-relative-name file default-directory))))
-                                   packages)
-                           "\n")))))
-
-(defun ar/latex-insert-packages-tex ()
-  "Insert \\usepackage lines for local .sty files."
-  (interactive)
-  (ar/latex-insert-project-packages "\\usepackage{%s}"))
-
-(defun ar/latex-insert-packages-org ()
-  "Insert #+LATEX_HEADER lines for local .sty files."
-  (interactive)
-  (ar/latex-insert-project-packages "#+LATEX_HEADER: \\usepackage{%s}"))
-#+end_src
-
-** Keybindings
-A dedicated, mode-specific leader menu for LaTeX provides quick access to compilation, viewing, citation, and project utility commands.
-
-#+begin_src emacs-lisp
-(with-eval-after-load 'general
-  :ensure nil ; Already configured
-  :config
-  (general-define-key
-   :keymaps 'latex-mode-map
-   :prefix "SPC m"
-   "c" '(:ignore t :wk "Compile")
-   "cc" '(ar/tex-compile-and-clean :wk "Compile & Clean")
-   "cv" '(TeX-view :wk "View Output")
-   "ce" '(TeX-error-overview :wk "Error Overview")
-   "ck" '(TeX-clean :wk "Clean Aux Files")
-   "i" '(:ignore t :wk "Insert")
-   "ic" '(citar-insert-citation :wk "Insert Citation")
-   "ip" '(ar/latex-insert-packages-tex :wk "Insert Project Packages")
-   "il" '(LaTeX-insert-label :wk "Insert Label")
-   "ir" '(LaTeX-insert-ref :wk "Insert Reference")
-   "e" '(:ignore t :wk "Environment")
-   "ee" '(LaTeX-environment :wk "Insert Environment")
-   "s" '(:ignore t :wk "Section")
-   "ss" '(LaTeX-section :wk "Insert Section")))
-#+end_src
-
 * General Keybindings
 This section defines the leader-key based command system using `general.el`.
+
 #+begin_src emacs-lisp
 (use-package general
   :after evil
@@ -1467,5 +951,10 @@ This section defines the leader-key based command system using `general.el`.
     "j" 'evil-next-visual-line
     "k" 'evil-previous-visual-line
     "C-d" 'evil-scroll-down
-    "C-u" 'evil-scroll-up))
+    "C-u" 'evil-scroll-up)
+
+  ;; --- Corfu Bindings ---
+  (general-define-key :keymaps 'corfu-map
+    "TAB" 'corfu-next
+    "S-TAB" 'corfu-previous))
 #+end_src

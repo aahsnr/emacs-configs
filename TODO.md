@@ -1,45 +1,24 @@
 # All tasks must be done in the given order
-1. [NOTE]: Add the following code when setting up org-agenda
-  (setq org-agenda-start-with-log-mode t) ; Show log entries in agenda
-  (setq org-agenda-span 'day) ; Default agenda span to day
-  (setq org-agenda-time-grid '((daily today require-timed)
-                               (800 1000 ".-")
-                               (1200 1400 ".-")
-                               (1600 1800 ".-")
-                               (2000 2200 ".-")))
-  (setq org-agenda-compact-blocks t) ; Compact agenda blocks
-
-2. [NOTE]: Add the following code when setting up Latex export
-  ;; Org Export settings (basic HTML export)
-  (setq org-html-validation-link nil) ; Don't include W3C validation link
-  (setq org-html-head-include-default-style nil) ; Don't include default CSS
-  (setq org-html-head-include-scripts nil) ; Don't include default JS
-  (setq org-html-head "<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/water.css@2/out/water.css\">") ; Simple CSS for exports
-
-- [ ] **Use the org-modern and org-appear settings from my doom setup**
-
-- [ ] __Replace lsp-mode with eglot & eglot-booster__
-
-- [ ] __Replace dap-mode with dape__
-
-- [ ] __Replace flycheck with flymake__
-
-- [ ] __Add consult-flymake__
-
-- [ ] __Fix dired/dirvish__
-
-- [ ] __Setup global word-wrap__
-
-- [ ] __Evil__
-
 - [ ] __Make sure the following packages are working org source code blocks, first by manually checking, then adding if neccessary__
   - Completion System
   - Eglot, eldoc, dape, flymake
   - Alphaelia
 
+- [x] __Replace lsp-mode with eglot & eglot-booster__
 
+- [x] __Replace dap-mode with dape__
 
-- [ ] __Buffer Management with ibuffer and bufler__
+- [x] __Replace flycheck with flymake__
+
+- [ ] __Add consult-flymake__
+
+- [ ] __Fix dired/dirvish__
+
+- [x] __Setup global word-wrap__
+
+- [x] __Evil__
+
+- [x] __Buffer Management with ibuffer and bufler__
 
 - [ ] __Project__ [Integrate project with completion system and ibuffer and perspective.el]
 

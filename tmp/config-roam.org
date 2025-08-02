@@ -1,0 +1,203 @@
+* Org Mode
+This section is configured to emulate a "TheBrain"-like workflow. It prioritizes a graph-based, networked approach to knowledge management using Org Roam as the core. Standard Org features like Agenda and Capture are preserved for structured tasks and journaling, complementing the free-form knowledge graph.
+
+** Directory and Path Setup
+#+begin_src emacs-lisp
+(defvar my/org-directory "~/org/"
+  "Base directory for all org files.")
+
+(defvar my/org-roam-directory (expand-file-name "roam/" my/org-directory)
+  "Directory for org-roam files.")
+
+(defvar my/org-downloads-directory (expand-file-name "downloads/" my/org-directory)
+  "Directory for org-download files.")
+
+(defvar my/org-noter-directory (expand-file-name "noter/" my/org-directory)
+  "Directory for org-noter files.")
+
+(defvar my/org-archive-directory (expand-file-name "archive/" my/org-directory)
+  "Directory for archived org files.")
+
+;; Create necessary directories
+(dolist (dir (list my/org-directory
+                   my/org-roam-directory
+                   my/org-downloads-directory
+                   my/org-noter-directory
+                   my/org-archive-directory
+                   (expand-file-name "attachments/" my/org-directory)
+                   (expand-file-name "projects/" my/org-directory)
+                   (expand-file-name "reviews/" my/org-directory)
+                   (expand-file-name "backups/" my/org-directory)))
+  (unless (file-directory-p dir)
+    (make-directory dir t)))
+#+end_src
+
+** TheBrain-like Knowledge Graph (Org Roam)
+This is the core of the setup, turning Org Roam into a visual and interactive knowledge graph.
+
+#+begin_src emacs-lisp
+(use-package org-roam
+  :after org
+  :init
+  (setq org-roam-directory my/org-roam-directory)
+  (setq org-roam-db-location (expand-file-name "org-roam.db" user-emacs-directory))
+  ;; Keybindings are defined under the "General Keybindings" section using general.el
+  :custom
+  (org-roam-completion-everywhere t)
+  (org-roam-node-display-template
+   (concat "${title:*} "
+           (propertize "${tags:20}" 'face 'org-tag)))
+  :config
+  (org-roam-db-autosync-mode)
+
+  ;; Configure the backlinks buffer to act like TheBrain's connection panel
+  (add-to-list 'display-buffer-alist
+               '("\\*org-roam\\*"
+                 (display-buffer-in-direction)
+                 (direction . right)
+                 (window-width . 0.33)
+                 (window-height . fit-window-to-buffer)))
+
+  ;; Templates focused on rapid "thought" creation
+  (setq org-roam-capture-templates
+        '(("d" "default" plain "%?"
+           :target (file+head "%<%Y%m%d%H%M%S>-${slug}.org"
+                              "#+title: ${title}\n#+created: %U\n#+modified: %U\n#+filetags:\n\n")
+           :unnarrowed t)
+          ("p" "project" plain "* Goal\n\n%?\n\n* Tasks\n\n* Notes\n"
+           :target (file+head "project-${slug}.org"
+                              "#+title: Project: ${title}\n#+created: %U\n#+modified: %U\n#+filetags: project\n\n")
+           :unnarrowed t)))
+
+  ;; Hook to update modification times, keeping the graph fresh
+  (defun my/org-roam-update-modified-timestamp ()
+    "Update modified timestamp in org-roam files before saving."
+    (when (and (eq major-mode 'org-mode) (org-roam-file-p))
+      (save-excursion
+        (goto-char (point-min))
+        (when (re-search-forward "^#\\+modified:" nil t)
+          (delete-region (point) (line-end-position))
+          (insert (format " %s" (format-time-string "[%Y-%m-%d %a %H:%M]")))))))
+  (add-hook 'before-save-hook #'my/org-roam-update-modified-timestamp))
+
+(use-package org-roam-ui
+  :after org-roam
+  :commands (org-roam-ui-mode org-roam-ui-open)
+  :custom
+  (org-roam-ui-sync-theme t)
+  (org-roam-ui-follow t)
+  (org-roam-ui-update-on-save t)
+  (org-roam-ui-open-on-start t)) ; Key change: Open the graph on startup
+
+(use-package consult-org-roam
+  :after (consult org-roam)
+  :init (consult-org-roam-mode 1))
+#+end_src
+
+** Global Capture (for Structured Data)
+Use these templates for structured entries like tasks, journal entries, and meetings that don't need to be nodes in the knowledge graph. For graph nodes, use the Org Roam capture functions (e.g., `SPC n i`).
+
+#+begin_src emacs-lisp
+(use-package org-capture
+  :ensure nil
+  :after org
+  :custom
+  (org-capture-templates
+   '(("t" "Task" entry (file+headline "~/org/inbox.org" "Tasks")
+      "* ☛ TODO %?\n  :PROPERTIES:\n  :CREATED: %U\n  :END:\n")
+     ("j" "Journal" entry (file+datetree "~/org/journal.org")
+      "* %U %?\n")
+     ("m" "Meeting" entry (file+headline "~/org/inbox.org" "Meetings")
+      "* Meeting: %? :meeting:\n  :PROPERTIES:\n  :CREATED: %U\n  :ATTENDEES: \n  :END:\n** Agenda\n** Notes\n** Action Items\n"))))
+#+end_src
+
+** Org for Tasks & Agenda
+This configuration handles traditional, time-based task management and scheduling. It works alongside the knowledge graph.
+
+#+begin_src emacs-lisp
+(use-package org-agenda
+  :ensure nil
+  :after org
+  :custom
+  (org-agenda-window-setup 'current-window)
+  (org-agenda-span 'week)
+  (org-agenda-start-with-log-mode t)
+  (org-agenda-skip-scheduled-if-done t)
+  (org-agenda-skip-deadline-if-done t)
+  (org-agenda-block-separator ?─)
+  (org-agenda-compact-blocks t)
+  :config
+  (setq org-agenda-custom-commands
+        '(("d" "Dashboard"
+           ((agenda "" ((org-deadline-warning-days 7)))
+            (todo "⚡ NEXT" ((org-agenda-overriding-header "⚡ Next Tasks")))
+            (tags-todo "project/🚀 ACTIVE" ((org-agenda-overriding-header "🚀 Active Projects"))))))))
+
+(use-package org-super-agenda
+  :after org-agenda
+  :config
+  (org-super-agenda-mode)
+  (setq org-super-agenda-groups
+        '((:name "📅 Today" :time-grid t :scheduled today)
+          (:name "🔥 Overdue" :deadline past)
+          (:name "⚡ Next Tasks" :todo "NEXT")
+          (:name "🎯 Important" :priority "A")
+          (:name "⏳ Waiting" :todo "WAIT")
+          (:discard (:anything t)))))
+#+end_src
+
+** Core Org Setup & Extensions
+This section handles the fundamental settings for Org files and loads supporting packages.
+
+#+begin_src emacs-lisp
+(use-package org
+  :ensure nil
+  :mode ("\\.org\\'" . org-mode)
+  :hook ((org-mode . visual-line-mode)
+         (org-mode . org-indent-mode)
+         (org-mode . auto-fill-mode)
+         (org-mode . flyspell-mode))
+  :custom
+  (org-directory my/org-directory)
+  (org-default-notes-file (expand-file-name "inbox.org" my/org-directory))
+  (org-agenda-files (list my/org-directory))
+  (org-archive-location (concat my/org-archive-directory "%s_archive::"))
+  (org-startup-folded 'overview)
+  (org-ellipsis " ⤵")
+  (org-hide-emphasis-markers t)
+  (org-pretty-entities t)
+  (org-src-fontify-natively t)
+  (org-confirm-babel-evaluate nil)
+  (org-todo-keywords
+   '((sequence "☛ TODO(t)" "⚡ NEXT(n)" "🔄 PROG(p)" "⏳ WAIT(w@/!)"
+               "|" "✅ DONE(d!)" "❌ CANCELLED(c@)")))
+  (org-todo-keyword-faces
+   '(("☛ TODO" . (:foreground "#fb4934" :weight bold))
+     ("⚡ NEXT" . (:foreground "#fabd2f" :weight bold))
+     ("🔄 PROG" . (:foreground "#83a598" :weight bold))
+     ("⏳ WAIT" . (:foreground "#d3869b" :weight bold))
+     ("✅ DONE" . (:foreground "#b8bb26" :weight bold))
+     ("❌ CANCELLED" . (:foreground "#928374" :weight bold))))
+  :config
+  (org-babel-do-load-languages
+   'org-babel-load-languages
+   '((emacs-lisp . t) (shell . t) (python . t)))
+  (require 'org-tempo))
+
+;; Supporting Packages
+(use-package org-download
+  :after org
+  :custom
+  (org-download-method 'directory)
+  (org-download-image-dir my/org-downloads-directory)
+  (org-download-image-attr-list '("#+ATTR_HTML: :width 80%" "#+ATTR_ORG: :width 400")))
+
+(use-package org-noter
+  :after org
+  :custom
+  (org-noter-notes-search-path (list my/org-noter-directory)))
+
+(use-package org-clock :ensure nil :after org :config (org-clock-persistence-insinuate))
+(use-package org-id :ensure nil :after org :config (org-id-update-id-locations))
+(use-package org-fragtog :hook (org-mode . org-fragtog-mode))
+#+end_src

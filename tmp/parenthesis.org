@@ -1,0 +1,92 @@
+#+title: Parenthesis
+* Parentheses & Delimiters
+This section configures packages for managing and visualizing parentheses and other delimiters, ensuring they work well with Evil mode and the overall theme.
+
+** Smartparens (Intelligent Pair Management)
+#+begin_src emacs-lisp
+(use-package smartparens
+  :init
+  ;; Enable smartparens globally for intelligent pair management.
+  (smartparens-global-mode 1)
+  :config
+  ;; In the minibuffer, we want basic pairing but not aggressive features
+  ;; that might interfere with completion frameworks. Strict mode is disabled here.
+  (add-hook 'minibuffer-setup-hook (lambda () (smartparens-strict-mode -1)))
+
+  ;; For most other buffers, enable strict mode for better structural integrity.
+  (add-hook 'prog-mode-hook #'smartparens-strict-mode)
+  (add-hook 'org-mode-hook #'smartparens-strict-mode)
+
+  ;; Display an indicator in the modeline.
+  (show-smartparens-global-mode 1)
+
+  ;; Navigate by visual lines, which is consistent with the global visual-line-mode.
+  (setq sp-navigate-consider-visual-lines t)
+
+  ;; --- Evil Integration ---
+  ;; This is crucial to prevent conflicts with `evil-surround`.
+  ;; By default, smartparens wants to autopair quote characters.
+  ;; `evil-surround` has powerful commands like `cs"'` (change surrounding " to ')
+  ;; which get broken if smartparens interferes. This tells smartparens
+  ;; to ignore these characters, letting evil-surround handle them exclusively.
+  (sp-pair "'" nil :actions nil)
+  (sp-pair "`" nil :actions nil)
+  (sp-pair "\"" nil :actions nil)
+
+  ;; --- Custom Wrapping Function ---
+  ;; A helper function to wrap a region with a smartparens pair,
+  ;; which can be called interactively.
+  (defun ar/sp-wrap-with-pair (begin end char)
+    "Wrap region with a smartparens pair CHAR."
+    (interactive "r\ncWrap with pair: ")
+    (let ((pair (sp--get-pair char)))
+      (if pair
+          (sp-wrap-region begin end (car pair) (cadr pair))
+        (message "No pair found for %c" char))))
+
+  ;; --- Keybindings for Smartparens actions ---
+  ;; These bindings provide powerful structural editing commands, namespaced
+  ;; under the local-leader prefix `SPC m s` to avoid conflicts.
+  (general-define-key
+   :keymaps 'evil-normal-state-map
+   :prefix "SPC m"
+   "s" '(:ignore t :wk "Sexp")
+   "s j" '(sp-join-sexp :wk "Join S-expression")
+   "s s" '(sp-split-sexp :wk "Split S-expression")
+   "s k" '(sp-kill-sexp :wk "Kill S-expression forward")
+   "s K" '(sp-backward-kill-sexp :wk "Kill S-expression backward")
+   "s r" '(sp-raise-sexp :wk "Raise S-expression")
+   "s w" '(ar/sp-wrap-with-pair :wk "Wrap with pair")
+   "s S" '(sp-forward-slurp-sexp :wk "Slurp forward")
+   "s B" '(sp-forward-barf-sexp :wk "Barf forward")))
+#+end_src
+
+** Rainbow Delimiters (Visual Feedback)
+#+begin_src emacs-lisp
+(use-package rainbow-delimiters
+  :after doom-themes ;; Defer until the theme is loaded to access its colors.
+  :hook ((prog-mode . rainbow-delimiters-mode)
+         (org-mode . rainbow-delimiters-mode))
+  :config
+  ;; This package works out-of-the-box with smartparens.
+  ;; It simply colorizes the delimiters that smartparens helps manage.
+
+  ;; --- Themed Face Customization ---
+  ;; We customize the delimiter colors to match the active doom-theme.
+  (defun ar/setup-rainbow-delimiters-faces ()
+    "Set rainbow-delimiters faces to match the current theme's palette."
+    ;; These color variables are defined by doom-themes.
+    (let ((colors (list doom-blue doom-green doom-yellow doom-magenta doom-cyan doom-orange doom-red)))
+      (dotimes (i (length colors))
+        (let ((face (intern (format "rainbow-delimiters-depth-%d-face" (1+ i)))))
+          (set-face-foreground face (nth i colors))))
+      ;; Set the max depth to the number of colors we have defined.
+      (setq rainbow-delimiters-max-face-count (length colors))))
+
+  ;; Apply the custom faces after a theme is loaded. This makes the colors
+  ;; update automatically whenever you switch themes.
+  (add-hook 'doom-themes-after-load-hook #'ar/setup-rainbow-delimiters-faces)
+
+  ;; Also run it once on startup to apply colors for the initial theme.
+  (ar/setup-rainbow-delimiters-faces))
+#+end_src

@@ -1,0 +1,317 @@
+* Org Mode
+This section contains a comprehensive configuration for Org as a life-management system, including tasks, agenda, notes, and knowledge management with Org Roam.
+
+** Directory and Path Setup
+#+begin_src emacs-lisp
+(defvar my/org-directory "~/org/"
+  "Base directory for all org files.")
+
+(defvar my/org-roam-directory (expand-file-name "roam/" my/org-directory)
+  "Directory for org-roam files.")
+
+(defvar my/org-downloads-directory (expand-file-name "downloads/" my/org-directory)
+  "Directory for org-download files.")
+
+(defvar my/org-noter-directory (expand-file-name "noter/" my/org-directory)
+  "Directory for org-noter files.")
+
+(defvar my/org-archive-directory (expand-file-name "archive/" my/org-directory)
+  "Directory for archived org files.")
+
+;; Create necessary directories
+(dolist (dir (list my/org-directory
+                   my/org-roam-directory
+                   my/org-downloads-directory
+                   my/org-noter-directory
+                   my/org-archive-directory
+                   (expand-file-name "attachments/" my/org-directory)
+                   (expand-file-name "projects/" my/org-directory)
+                   (expand-file-name "reviews/" my/org-directory)
+                   (expand-file-name "backups/" my/org-directory)))
+  (unless (file-directory-p dir)
+    (make-directory dir t)))
+#+end_src
+
+** Core Org Setup
+#+begin_src emacs-lisp
+(use-package org
+  :ensure nil
+  :mode ("\\.org\\'" . org-mode)
+  :hook ((org-mode . visual-line-mode)
+         (org-mode . org-indent-mode)
+         (org-mode . auto-fill-mode)
+         (org-mode . flyspell-mode))
+
+  :custom
+  ;; Basic settings
+  (org-directory my/org-directory)
+  (org-default-notes-file (expand-file-name "inbox.org" my/org-directory))
+  (org-agenda-files (list my/org-directory))
+  (org-archive-location (concat my/org-archive-directory "%s_archive::"))
+  (org-agenda-inhibit-startup t)
+
+  ;; Startup and display
+  (org-startup-folded 'overview)
+  (org-startup-indented t)
+  (org-ellipsis " ⤵")
+  (org-hide-emphasis-markers t)
+  (org-pretty-entities t)
+  (org-startup-with-inline-images t)
+  (org-startup-with-latex-preview t)
+
+  ;; Behavior
+  (org-use-property-inheritance t)
+  (org-cycle-separator-lines 2)
+  (org-catch-invisible-edits 'smart)
+  (org-special-ctrl-a/e t)
+  (org-special-ctrl-k t)
+  (org-fast-tag-selection-single-key t)
+
+  ;; Lists and checkboxes
+  (org-list-allow-alphabetical t)
+  (org-checkbox-statistics-hook '(org-update-parent-todo-statistics))
+  (org-hierarchical-todo-statistics t)
+
+  ;; Source blocks
+  (org-src-fontify-natively t)
+  (org-src-tab-acts-natively t)
+  (org-src-preserve-indentation t)
+  (org-src-window-setup 'current-window)
+  (org-edit-src-content-indentation 0)
+  (org-confirm-babel-evaluate nil)
+
+  ;; Export
+  (org-export-in-background t)
+  (org-export-with-smart-quotes t)
+
+  ;; Todo Keywords & Faces
+  (org-todo-keywords
+   '((sequence "☛ TODO(t)" "⚡ NEXT(n)" "🔄 PROG(p)" "⏳ WAIT(w@/!)"
+               "|" "✅ DONE(d!)" "❌ CANCELLED(c@)")
+     (sequence "📋 PLAN(P)" "🔍 RESEARCH(R)" "📝 DRAFT(D)"
+               "|" "📤 PUBLISHED(u)" "🗑 TRASH(T)")
+     (sequence "🎯 GOAL(G)" "🚀 ACTIVE(A)" "⏸ PAUSED(x)"
+               "|" "🏆 ACHIEVED(a)" "🚫 DROPPED(X)")))
+  (org-todo-keyword-faces
+   '(("☛ TODO" . (:foreground "#fb4934" :weight bold))
+     ("⚡ NEXT" . (:foreground "#fabd2f" :weight bold))
+     ("🔄 PROG" . (:foreground "#83a598" :weight bold))
+     ("⏳ WAIT" . (:foreground "#d3869b" :weight bold))
+     ("✅ DONE" . (:foreground "#b8bb26" :weight bold))
+     ("❌ CANCELLED" . (:foreground "#928374" :weight bold))
+     ("📋 PLAN" . (:foreground "#8ec07c" :weight bold))
+     ("🔍 RESEARCH" . (:foreground "#fe8019" :weight bold))
+     ("📝 DRAFT" . (:foreground "#d65d0e" :weight bold))
+     ("📤 PUBLISHED" . (:foreground "#689d6a" :weight bold))
+     ("🗑 TRASH" . (:foreground "#928374" :weight bold))
+     ("🎯 GOAL" . (:foreground "#b16286" :weight bold))
+     ("🚀 ACTIVE" . (:foreground "#d79921" :weight bold))
+     ("⏸ PAUSED" . (:foreground "#7c6f64" :weight bold))
+     ("🏆 ACHIEVED" . (:foreground "#689d6a" :weight bold))
+     ("🚫 DROPPED" . (:foreground "#665c54" :weight bold))))
+
+  :config
+  ;; Load babel languages
+  (org-babel-do-load-languages
+   'org-babel-load-languages
+   '((emacs-lisp . t)
+     (shell . t)
+     (python . t)))
+
+  ;; Add structure templates for easy source block insertion
+  (require 'org-tempo)
+  (add-to-list 'org-structure-template-alist '("el" . "src emacs-lisp"))
+  (add-to-list 'org-structure-template-alist '("sh" . "src shell"))
+  (add-to-list 'org-structure-template-alist '("py" . "src python")))
+#+end_src
+
+** Org Agenda
+#+begin_src emacs-lisp
+(use-package org-agenda
+  :ensure nil
+  :after org
+  :custom
+  (org-agenda-window-setup 'current-window)
+  (org-agenda-restore-windows-after-quit t)
+  (org-agenda-span 'week)
+  (org-agenda-start-on-weekday nil)
+  (org-agenda-start-day "today")
+  (org-agenda-skip-scheduled-if-done t)
+  (org-agenda-skip-deadline-if-done t)
+  (org-agenda-include-deadlines t)
+  (org-agenda-block-separator ?─)
+  (org-agenda-compact-blocks t)
+  (org-agenda-start-with-log-mode t)
+  (org-agenda-log-mode-items '(closed clock state))
+  (org-agenda-clockreport-parameter-plist '(:link t :maxlevel 2))
+  (org-agenda-time-grid '((daily today require-timed)
+                          (800 1000 1200 1400 1600 1800 2000)
+                          " ┄┄┄┄┄ " "┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄"))
+  (org-agenda-current-time-string "◀── now ─────────────────────────────────────────────────")
+
+  :config
+  (setq org-agenda-custom-commands
+        '(("d" "Dashboard"
+           ((agenda "" ((org-deadline-warning-days 7)
+                        (org-agenda-overriding-header "📅 Agenda")))
+            (todo "⚡ NEXT" ((org-agenda-overriding-header "⚡ Next Tasks")))
+            (tags-todo "project/🚀 ACTIVE" ((org-agenda-overriding-header "🚀 Active Projects")))
+            (tags-todo "+PRIORITY=\"A\"" ((org-agenda-overriding-header "🔥 High Priority")))
+            (todo "⏳ WAIT" ((org-agenda-overriding-header "⏳ Waiting On")))
+            (tags-todo "+habit" ((org-agenda-overriding-header "🔄 Habits")))
+            (stuck "" ((org-agenda-overriding-header "🚫 Stuck Projects")))))
+
+          ("n" "Next Tasks"
+           ((todo "⚡ NEXT" ((org-agenda-overriding-header "⚡ Next Tasks")))))
+
+          ("w" "Work Context"
+           ((tags-todo "@work/⚡ NEXT" ((org-agenda-overriding-header "💼 Work Next")))
+            (tags-todo "@work/☛ TODO" ((org-agenda-overriding-header "💼 Work Tasks")))
+            (tags-todo "@work+project/🚀 ACTIVE" ((org-agenda-overriding-header "💼 Work Projects")))))
+
+          ("h" "Home Context"
+           ((tags-todo "@home/⚡ NEXT" ((org-agenda-overriding-header "🏠 Home Next")))
+            (tags-todo "@home/☛ TODO" ((org-agenda-overriding-header "🏠 Home Tasks")))))
+
+          ("p" "Projects Overview"
+           ((tags "project" ((org-agenda-overriding-header "📋 All Projects")))))
+
+          ("g" "Goals Review"
+           ((tags-todo "goal" ((org-agenda-overriding-header "🎯 Goals")))))
+
+          ("r" "Review"
+           ((agenda "" ((org-agenda-span 'day) (org-agenda-overriding-header "📅 Today")))
+            (todo "✅ DONE" ((org-agenda-overriding-header "✅ Completed Today")
+                             (org-agenda-skip-function '(org-agenda-skip-entry-if 'nottoday))))
+            (stuck "" ((org-agenda-overriding-header "🚫 Stuck Projects"))))))))
+
+(use-package org-super-agenda
+  :after org-agenda
+  :config
+  (org-super-agenda-mode)
+  (setq org-super-agenda-groups
+        '((:name "🔥 Overdue" :deadline past)
+          (:name "📅 Today" :time-grid t :scheduled today)
+          (:name "⚡ Next" :todo "⚡ NEXT")
+          (:name "🔴 Important" :priority "A")
+          (:name "📋 Projects" :tag "project")
+          (:name "🏠 Home" :tag "@home")
+          (:name "💼 Work" :tag "@work")
+          (:name "⏳ Waiting" :todo "⏳ WAIT")
+          (:name "📚 Reading" :tag "read")
+          (:name "🎯 Goals" :tag "goal")
+          (:name "🔄 Habits" :tag "habit")
+          (:discard (:anything t)))))
+#+end_src
+
+** Org Capture
+#+begin_src emacs-lisp
+(use-package org-capture
+  :ensure nil
+  :after org
+  :custom
+  (org-capture-templates
+   '(("t" "Task" entry (file+headline "~/org/inbox.org" "Tasks")
+      "* ☛ TODO %?\n  :PROPERTIES:\n  :CREATED: %U\n  :END:\n")
+
+     ("n" "Note" entry (file+headline "~/org/inbox.org" "Notes")
+      "* %? :note:\n  :PROPERTIES:\n  :CREATED: %U\n  :SOURCE: \n  :END:\n")
+
+     ("j" "Journal" entry (file+datetree "~/org/journal.org")
+      "* %U %?\n")
+
+     ("m" "Meeting" entry (file+headline "~/org/inbox.org" "Meetings")
+      "* Meeting: %? :meeting:\n  :PROPERTIES:\n  :CREATED: %U\n  :ATTENDEES: \n  :END:\n** Agenda\n** Notes\n** Action Items\n")
+
+     ("p" "Project" entry (file+headline "~/org/projects.org" "Projects")
+      "* 📋 PLAN %? :project:\n  :PROPERTIES:\n  :CREATED: %U\n  :GOAL: \n  :DEADLINE: \n  :END:\n** Goals\n** Tasks\n*** ☛ TODO Define project scope\n** Resources\n** Notes\n")
+
+     ("b" "Book" entry (file+headline "~/org/reading.org" "Reading List")
+      "* %? :book:read:\n  :PROPERTIES:\n  :CREATED: %U\n  :AUTHOR: \n  :GENRE: \n  :PAGES: \n  :STARTED: \n  :FINISHED: \n  :RATING: \n  :END:\n** Summary\n** Key Takeaways\n** Quotes\n")
+
+     ("h" "Habit" entry (file+headline "~/org/habits.org" "Habits")
+      "* ☛ TODO %? :habit:\n  SCHEDULED: %(format-time-string \"%<<%Y-%m-%d %a .+1d>>\")\n  :PROPERTIES:\n  :CREATED: %U\n  :STYLE: habit\n  :END:\n")
+
+     ("g" "Goal" entry (file+headline "~/org/goals.org" "Goals")
+      "* 🎯 GOAL %? :goal:\n  DEADLINE: %(org-read-date nil nil \"+1y\")\n  :PROPERTIES:\n  :CREATED: %U\n  :TYPE: \n  :END:\n** Why this goal?\n** Success criteria\n** Action steps\n*** ☛ TODO Break down into smaller tasks\n** Resources needed\n** Potential obstacles\n** Progress tracking\n"))))
+#+end_src
+
+** Org Roam
+#+begin_src emacs-lisp
+(use-package org-roam
+  :after org
+  :init
+  (setq org-roam-directory my/org-roam-directory)
+  (setq org-roam-db-location (expand-file-name "org-roam.db" user-emacs-directory))
+  :custom
+  (org-roam-completion-everywhere t)
+  (org-roam-node-display-template
+   (concat "${title:*} " (propertize "${tags:20}" 'face 'org-tag)))
+  :config
+  (org-roam-db-autosync-mode)
+  ;; Enhanced capture templates
+  (setq org-roam-capture-templates
+        '(("d" "default" plain "%?"
+           :target (file+head "%<%Y%m%d%H%M%S>-${slug}.org"
+                              "#+title: ${title}\n#+date: %U\n#+created: %U\n#+modified: %U\n#+filetags:\n\n")
+           :unnarrowed t)
+
+          ("p" "project" plain "* Project Overview\n\n%?\n\n* Tasks\n\n** TODO Define project requirements\n\n* Notes\n"
+           :target (file+head "%<%Y%m%d%H%M%S>-${slug}.org"
+                              "#+title: ${title}\n#+created: %U\n#+modified: %U\n#+filetags: project\n\n")
+           :unnarrowed t)
+
+          ("b" "book" plain "* Summary\n\n%?\n\n* Key Insights\n\n* Quotes\n"
+           :target (file+head "%<%Y%m%d%H%M%S>-${slug}.org"
+                              "#+title: ${title}\n#+created: %U\n#+modified: %U\n#+filetags: book literature\n\n")
+           :unnarrowed t))))
+
+(use-package org-roam-ui
+  :after org-roam
+  :commands (org-roam-ui-mode org-roam-ui-open)
+  :custom
+  (org-roam-ui-sync-theme t)
+  (org-roam-ui-follow t)
+  (org-roam-ui-update-on-save t)
+  (org-roam-ui-open-on-start nil))
+
+(use-package consult-org-roam
+  :after (consult org-roam)
+  :init (consult-org-roam-mode 1))
+#+end_src
+
+** Org Extensions
+#+begin_src emacs-lisp
+(use-package org-download
+  :after org
+  :custom
+  (org-download-method 'directory)
+  (org-download-image-dir my/org-downloads-directory)
+  (org-download-heading-lvl nil)
+  (org-download-timestamp "%Y%m%d-%H%M%S_")
+  (org-download-image-attr-list '("#+ATTR_HTML: :width 80%" "#+ATTR_ORG: :width 400")))
+
+(use-package org-noter
+  :after org
+  :custom
+  (org-noter-notes-search-path (list my/org-noter-directory)))
+
+(use-package org-id
+  :ensure nil
+  :after org
+  :config (org-id-update-id-locations))
+
+(use-package org-habit
+  :ensure nil
+  :after org
+  :custom
+  (org-habit-graph-column 60))
+
+(use-package org-clock
+  :ensure nil
+  :after org
+  :config (org-clock-persistence-insinuate))
+
+(use-package org-fragtog
+  :hook (org-mode . org-fragtog-mode))
+#+end_src
