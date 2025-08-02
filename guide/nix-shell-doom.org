@@ -1,0 +1,415 @@
+* Comprehensive Doom Emacs Setup with Nix Shell
+
+This guide will walk you through setting up Doom Emacs to work seamlessly with a Nix shell, providing a reproducible and isolated development environment for your programming projects.
+
+-----
+
+** Why Nix Shell with Doom Emacs?
+
+* *Reproducibility*: Ensure that everyone working on a project has the exact same development tools and versions.
+* *Isolation*: Avoid polluting your global system with project-specific dependencies.
+* *Declarative*: Define your development environment in a simple =shell.nix= file.
+* *Flexibility*: Easily switch between different project environments without conflicts.
+
+-----
+
+** Prerequisites
+
+1.  *Nix Package Manager*: Install Nix on your system. Follow the instructions on the official Nix website: [[https://nixos.org/download.html][Nix Download]]
+2.  *Doom Emacs*: Install Doom Emacs. You can find instructions here: [[https://github.com/doomemacs/doomemacs][Doom Emacs GitHub]]
+    * It's recommended to install Doom Emacs globally or in your user directory, and then manage project-specific dependencies via Nix.
+
+-----
+
+** Step 1: Create Your =shell.nix= File
+
+This file defines the development environment for your project. Place this =shell.nix= file in the root of your project directory.
+
+Let's create an example =shell.nix= for a Python and Node.js project, including common tools like =git=, =docker=, and language servers.
+
+#+BEGIN_SRC nix
+# shell.nix
+{ pkgs ? import <nixpkgs> {} }:
+
+let
+  # Define specific versions for languages if needed
+  pythonEnv = pkgs.python311.withPackages (p: with p; [
+    pip
+    venv
+    black # Python formatter
+    isort # Python import sorter
+    pylint # Python linter
+  ]);
+
+  nodejsEnv = pkgs.nodejs_20.withPackages (p: with p; [
+    npm
+    yarn
+  ]);
+
+in
+pkgs.mkShell {
+  # Build inputs are packages available in the shell environment
+  buildInputs = with pkgs; [
+    # Core development tools
+    git
+    docker # For containerized development
+    sqlite-interactive # Example database client
+
+    # Language-specific tools
+    pythonEnv
+    nodejsEnv
+
+    # Language Servers (LSPs) for Emacs
+    # Ensure these match what your Doom Emacs configuration expects
+    nil # Nix Language Server
+    nodePackages.typescript-language-server # TypeScript LSP
+    nodePackages.vscode-langservers-extracted # HTML, CSS, JSON LSP
+    nodePackages.prettier # Code formatter
+    pyright # Python LSP (often preferred over pylsp)
+    gopls # Go LSP
+    rust-analyzer # Rust LSP
+    clang-tools # C/C++ LSP and formatters
+    cmake # Build system for C/C++
+    texlive.combined.scheme-medium # LaTeX tools
+
+    # Other useful utilities
+    ripgrep # Fast grep, used by many Emacs packages (e.g., consult, vertico)
+    fd # Fast find alternative
+    jq # JSON processor
+    direnv # For automatic shell loading (highly recommended)
+  ];
+
+  # Environment variables (optional)
+  shellHook = ''
+    echo "Entering Nix shell for project: $(basename $(pwd))"
+    # Example: Set up a virtual environment for Python
+    if [ -d "venv" ]; then
+      source venv/bin/activate
+      echo "Activated Python virtual environment."
+    fi
+  '';
+
+  # Optional: Allow specific packages to be overridden
+  # This is useful if you need a very specific version of a tool
+  # For example, to use an older version of Node.js:
+  # nodejs = pkgs.nodejs_18;
+}
+#+END_SRC
+
+** Explanation of =shell.nix=:
+
+* =pkgs ? import <nixpkgs> {}=: Imports the Nix Packages collection.
+* =pythonEnv=, =nodejsEnv=: Custom derivations to include specific Python/Node.js packages. This is cleaner than listing all packages directly in =buildInputs=.
+* =pkgs.mkShell=: The core function to create a development shell.
+* =buildInputs=: A list of packages that will be made available in your shell's =PATH=. This is where you put your compilers, interpreters, language servers, formatters, linters, etc.
+* =shellHook=: A script that runs when you enter the Nix shell. Useful for activating virtual environments, setting environment variables, or displaying messages.
+* =direnv= integration: If you install =direnv= (highly recommended), it can automatically load and unload your Nix shell when you =cd= into and out of your project directory. Install =direnv= and add =eval "$(direnv hook nix)"= to your shell's =rc= file (e.g., =.bashrc=, =.zshrc=).
+
+-----
+
+** Step 2: Configure Doom Emacs
+
+Your Doom Emacs configuration needs to be aware of the tools provided by the Nix shell. Doom Emacs generally handles this well because it inherits the =PATH= and other environment variables from the shell it's launched from.
+
+Here's how you might adjust your Doom Emacs =~/.doom.d/config.el= and =~/.doom.d/packages.el= to take advantage of the Nix shell.
+
+*** =~/.doom.d/init.el=
+
+Ensure you have the necessary modules enabled. For programming, you'll likely want:
+
+#+BEGIN_SRC elisp
+;; ~/.doom.d/init.el
+
+;; Core modules
+(doom! :input
+       ;; ...
+       :completion
+       (company +childframe) ; Autocompletion
+       (ivy +prescient)      ; Ivy completion framework
+       ;; ...
+       :ui
+       ;; ...
+       :editor
+       (evil +everywhere) ; Vim keybindings
+       (file-templates)  ; Snippets
+       (format)          ; Code formatting
+       (lookup +docsets) ; Documentation lookup
+       (multiple-cursors)
+       (nav-flash)
+       (parinfer)
+       (rotate-text)
+       (snippets)
+       (word-wrap)
+       ;; ...
+       :emacs
+       (dired +icons)    ; File manager
+       (electric)
+       (undo-tree)
+       (vc)              ; Version control
+       ;; ...
+       :checkers
+       (syntax)          ; Syntax checking (flycheck)
+       (spell)           ; Spell checking (flyspell)
+       ;; ...
+       :tools
+       (ansible)
+       (biblio)
+       (debugger +lsp)   ; Debugger integration
+       (docker)          ; Docker integration
+       (editorconfig)
+       (eval)            ; Code evaluation
+       (gist)
+       (lookup +docsets)
+       (lsp)             ; Language Server Protocol
+       (magit)           ; Git client
+       (make)
+       (pass)
+       (pdf)
+       (plantuml)
+       (prodigy)
+       (rgb)
+       (terraform)
+       (tmux)
+       (upload)
+       (vterm)           ; Terminal emulator
+       ;; ...
+       :lang
+       (cc +lsp)         ; C/C++
+       (clojure +lsp)
+       (common-lisp)
+       (crystal)
+       (csharp +lsp)
+       (dart +lsp)
+       (elixir +lsp)
+       (elm)
+       (emacs-lisp)
+       (erlang)
+       (ess)             ; R, S
+       (fsharp +lsp)
+       (go +lsp)         ; Go
+       (haskell +lsp)
+       (java +lsp)       ; Java
+       (javascript +lsp) ; JavaScript/TypeScript
+       (json)
+       (jsx)
+       (kotlin +lsp)
+       (latex +lsp)      ; LaTeX
+       (ledger)
+       (lua +lsp)        ; Lua
+       (markdown)
+       (nim)
+       (nix)             ; Nix language support
+       (ocaml +lsp)
+       (org +dragndrop +hugo +present +roam) ; Org mode
+       (perl +lsp)
+       (php +lsp)
+       (plantuml)
+       (protobuf)
+       (purescript)
+       (python +lsp)     ; Python
+       (qt)
+       (racket)
+       (rest)
+       (ruby +lsp)       ; Ruby
+       (rust +lsp)       ; Rust
+       (scala +lsp)
+       (sh)              ; Shell scripting
+       (sql)
+       (swift +lsp)
+       (terra)
+       (web)             ; HTML, CSS
+       (yaml)
+       ;; ...
+       :app
+       ;; ...
+       :config
+       (default +bindings +smartparens)
+       ;; ...
+       )
+#+END_SRC
+
+*** =~/.doom.d/config.el=
+
+This is where you'll put your custom configurations. For Nix shell integration, the key is that Doom Emacs will automatically pick up the =PATH= from the shell it's launched from. You generally don't need explicit Nix-specific paths here, but you might want to configure LSP servers or formatters to be aware of project-specific settings.
+
+#+BEGIN_SRC elisp
+;; ~/.doom.d/config.el
+
+;; General Emacs configuration
+(setq display-line-numbers 'relative ; Show relative line numbers
+      fill-column 80               ; Set fill column for auto-wrapping
+      tab-width 2                  ; Default tab width
+      indent-tabs-mode nil         ; Use spaces instead of tabs
+      )
+
+;; LSP configuration (example for Python and TypeScript)
+(use-package! lsp-pyright
+  :after lsp
+  :config
+  (setq lsp-pyright-auto-venv-activate t) ; Automatically activate venv if found
+  (add-hook 'python-mode-hook #'lsp))
+
+(use-package! lsp-mode
+  :config
+  (setq lsp-enable-text-document-code-action t
+        lsp-enable-text-document-code-lens t
+        lsp-enable-snippet t
+        lsp-headerline-breadcrumb-enable t
+        lsp-completion-provider :none) ; Let company-mode handle completion
+  (set-lsp-priority! 'pyright 200) ; Prioritize pyright over other Python LSPs
+  (set-lsp-priority! 'typescript-language-server 200)
+  )
+
+;; Formatters (e.g., Black for Python, Prettier for JS/TS)
+(use-package! apheleia
+  :config
+  (setq apheleia-mode-alist
+        '((python-mode . black)
+          (js-mode . prettier)
+          (typescript-mode . prettier)
+          (css-mode . prettier)
+          (json-mode . prettier)
+          (web-mode . prettier)
+          (nix-mode . nixpkgs-fmt) ; If you install nixpkgs-fmt in your shell
+          ))
+  (apheleia-global-mode +1))
+
+;; Vterm configuration
+;; NOTE: vterm typically inherits the shell from the environment Emacs was launched from.
+;; Hardcoding a path like "/run/current-system/sw/bin/bash" is usually only necessary
+;; if running Emacs directly on NixOS, or if you need a specific shell not in your PATH.
+;; For most cases, when launching Emacs from within a Nix shell (or via direnv),
+;; vterm will automatically use the correct shell from that environment.
+;; (setq vterm-shell "/run/current-system/sw/bin/bash")
+(setq vterm-max-scrollback 10000)
+
+;; Direnv integration (optional, but highly recommended)
+;; This ensures Emacs picks up environment variables set by direnv
+(use-package! direnv
+  :config
+  (direnv-mode))
+
+;; Magit configuration (example)
+(setq magit-display-buffer-function #'magit-display-buffer-same-window-except-diff-v1)
+
+;; Other useful configurations
+(setq projectile-project-search-path '("~/projects/" "~/work/")) ; Customize project root search paths
+
+;; Set up `exec-path` for GUI Emacs (important if you launch Emacs outside direnv)
+;; If you always launch Emacs from within the Nix shell (or via direnv),
+;; this might not be strictly necessary, but it's good practice.
+(when (eq system-type 'darwin)
+  (setenv "PATH" (concat "/opt/homebrew/bin:" (getenv "PATH"))) ; For Homebrew on macOS
+  (setq exec-path (append '("/opt/homebrew/bin") exec-path)))
+
+;; Add Nix-specific paths to exec-path for GUI Emacs
+;; This is crucial if you launch GUI Emacs *outside* of a direnv-managed shell
+;; and still want it to find tools from your Nix profile.
+;; However, for project-specific tools, it's better to rely on direnv
+;; or launching Emacs from within the `nix-shell` itself.
+(setq exec-path (append (split-string (getenv "PATH") ":") exec-path))
+#+END_SRC
+
+*** =~/.doom.d/packages.el=
+
+You generally don't need to add many packages here if Doom Emacs modules provide what you need. However, if there's a specific Emacs package not covered by Doom modules, you can add it here.
+
+#+BEGIN_SRC elisp
+;; ~/.doom.d/packages.el
+
+;; Example: A package for Nix formatting (if not already included by doom's nix module)
+;; (package! nixpkgs-fmt)
+#+END_SRC
+
+After modifying your Doom Emacs configuration files, remember to run:
+
+#+BEGIN_SRC bash
+doom sync
+#+END_SRC
+
+-----
+
+** Step 3: Launching Doom Emacs with Nix Shell
+
+The most important step is ensuring Emacs inherits the environment variables and =PATH= from your Nix shell.
+
+*** Option 1: Manual =nix-shell= (Simplest)
+
+1.  Navigate to your project directory in your terminal:
+    #+BEGIN_SRC bash
+    cd /path/to/your/project
+    #+END_SRC
+2.  Enter the Nix shell:
+    #+BEGIN_SRC bash
+    nix-shell
+    #+END_SRC
+    You will see a message indicating you've entered the shell (e.g., "Entering Nix shell...").
+3.  From *within* the Nix shell, launch Doom Emacs:
+    #+BEGIN_SRC bash
+    doom run # For terminal Emacs
+    emacsclient -c -a "" # For GUI Emacs (if your Emacs daemon is running)
+    emacs # For GUI Emacs (if no daemon)
+    #+END_SRC
+    When you launch Emacs this way, it will inherit the =PATH= and all other environment variables set by your =shell.nix=.
+
+*** Option 2: Using =direnv= (Recommended for Automation) []
+
+=direnv= automates the process of loading and unloading Nix shells.
+
+1.  *Install =direnv=*: Make sure =direnv= is in your =shell.nix= or installed globally.
+    #+BEGIN_SRC bash
+    nix-env -iA nixpkgs.direnv # Global installation
+    #+END_SRC
+2.  *Hook =direnv= into your shell*: Add the following to your shell's =rc= file ( =.bashrc=, =.zshrc=, etc.):
+    #+BEGIN_SRC bash
+    eval "$(direnv hook bash)" # For Bash
+    # eval "$(direnv hook zsh)" # For Zsh
+    #+END_SRC
+3.  *Enable Nix hook for =direnv=*: Add this to your shell's =rc= file as well:
+    #+BEGIN_SRC bash
+    eval "$(direnv hook nix)"
+    #+END_SRC
+4.  *Allow =direnv= in your project*:
+    * Navigate to your project directory: =cd /path/to/your/project=
+    * Run: =direnv allow=
+    * This will execute your =shell.nix= and load the environment.
+5.  *Launch Emacs*: Now, whenever you =cd= into your project directory, the Nix shell environment will be automatically loaded. You can then launch Doom Emacs as usual from that directory, and it will pick up the correct =PATH= and tools.
+    #+BEGIN_SRC bash
+    emacsclient -c -a "" # Or =doom run=
+    #+END_SRC
+
+-----
+
+** Verifying the Setup
+
+Once Emacs is running within the Nix shell environment:
+
+1.  *Check =PATH=*: In Emacs, open =*scratch*= buffer and evaluate:
+    #+BEGIN_SRC elisp
+    (getenv "PATH")
+    #+END_SRC
+    You should see paths to the Nix store (=/nix/store/...=) containing the tools you specified in =shell.nix=.
+2.  *Test Language Servers*: Open a file of a language you've configured (e.g., a Python file, a TypeScript file). The LSP should automatically start and provide completions, diagnostics, etc.
+3.  *Test Formatters*: Try running a formatter (e.g., =SPC c f= for =+format/buffer= in Doom). It should use the formatter provided by the Nix shell.
+4.  *Open =vterm=*: =SPC o t= (or =M-x vterm=). You should be in the Nix shell environment, and commands like =python --version=, =node --version=, =pyright --version= should reflect the versions specified in your =shell.nix=.
+
+-----
+
+** Advanced Tips
+
+* *Project-specific Emacs Config*: For very specific project needs, you can use =dir-locals.el= to set variables that apply only to files within that directory. For example, to force a specific Python interpreter path if =pyright= isn't picking it up correctly:
+    #+BEGIN_SRC elisp
+    ;; .dir-locals.el in your project root
+    ((python-mode . ((lsp-pyright-executable . "/path/to/your/nix/store/pyright/bin/pyright"))))
+    #+END_SRC
+    However, relying on the =PATH= from the Nix shell is generally preferred.
+* *Pinning =nixpkgs=*: For ultimate reproducibility, pin the =nixpkgs= version in your =shell.nix= using a specific commit or channel. This prevents your environment from changing when =nixpkgs= updates.
+    #+BEGIN_SRC nix
+    # shell.nix (with pinned nixpkgs)
+    { pkgs ? import (builtins.fetchTarball "https://github.com/NixOS/nixpkgs/archive/YOUR_NIXPKGS_COMMIT_HASH.tar.gz") {} }:
+    # ... rest of your shell.nix
+    #+END_SRC
+    Replace =YOUR_NIXPKGS_COMMIT_HASH= with a specific commit from the =nixpkgs= repository.
+* *Multiple Nix Shells*: You can have different =shell.nix= files in different subdirectories of your project if you have distinct environments for different components (e.g., =frontend/shell.nix=, =backend/shell.nix=).
+
+This setup provides a robust and consistent development environment for your programming projects with Doom Emacs and Nix.

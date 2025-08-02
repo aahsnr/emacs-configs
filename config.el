@@ -1,28 +1,10 @@
-#+TITLE: Doom Emacs Configuration
-#+AUTHOR: Ahsanur Rahman 
-#+STARTUP: overview
-#+PROPERTY: :lexical yes
-
-* Initial Setup
-** Lexical binding
-#+begin_src emacs-lisp
 ;;; -*- lexical-binding: t; -*-
-#+end_src
 
-** Use Setup
-#+begin_src emacs-lisp
 (setq user-full-name "Ahsanur Rahman"
       user-mail-address "ahsanur041@proton.me")
-#+end_src
 
-** Prefer y-or-n over yes-or-no
-#+begin_src emacs-lisp
 (defalias 'yes-or-no-p 'y-or-n-p)
-#+end_src
 
-* UI and Theming
-** Theming
-#+begin_src emacs-lisp
 (use-package doom-themes
   :custom
   (doom-themes-enable-bold t)
@@ -34,14 +16,9 @@
   (doom-themes-visual-bell-config)
   (doom-themes-treemacs-config)
   (doom-themes-org-config))
-#+end_src
 
-#+begin_src emacs-lisp
 ;; (setq doom-theme 'catppuccin)
-#+end_src
 
-** Fonts
-#+begin_src emacs-lisp
 (setq doom-font (font-spec :family "JetBrainsMono Nerd Font" :size 14.5 :weight 'medium)
       doom-variable-pitch-font (font-spec :family "JetBrainsMono Nerd Font" :size 14.5)
       doom-big-font (font-spec :family "JetBrainsMono Nerd Font" :size 26.0))
@@ -52,43 +29,27 @@
   (defun +my/setup-font-faces ()
     (set-face-attribute 'font-lock-comment-face nil :slant 'italic)
     (set-face-attribute 'font-lock-keyword-face nil :slant 'italic)))
-#+end_src
 
-** Lines
-#+begin_src emacs-lisp
 (setq-default line-spacing 0.00)
 
 (add-hook! '(org-mode-hook term-mode-hook shell-mode-hook eshell-mode-hook)
            #'(lambda () (display-line-numbers-mode -1)))
-#+end_src
 
-** Dashboard
-#+begin_src emacs-lisp
 (setq +doom-dashboard-banner-padding '(0 . 2))
 (setq +doom-dashboard-banner-file "~/.config/doom/banner.png")
-#+end_src
 
-** Which Key
-#+begin_src emacs-lisp
 (setq which-key-allow-multiple-replacements t)
 (after! which-key
   (pushnew!
    which-key-replacement-alist
    '(("" . "\\`+?evil[-:]?\\(?:a-\\)?\\(.*\\)") . (nil . " \\1"))
    '(("\\`g s" . "\\`evilem--?motion-\\(.*\\)") . (nil . " \\1"))))
-#+end_src
 
-** Modeline
-#+begin_src emacs-lisp
 (after! doom-modeline
   (setq doom-modeline-buffer-file-name-style 'truncate-upto-project
         doom-modeline-display-buffer-encoding nil
         doom-modeline-display-minor-modes nil))
-#+end_src
 
-* Editor & Evil
-** Core Evil
-#+begin_src emacs-lisp
 (setq evil-split-window-below t
       evil-vsplit-window-right t
       evil-want-fine-undo t)
@@ -97,46 +58,28 @@
 (setq evil-normal-state-cursor '(box "#fe8019")
       evil-insert-state-cursor '(bar "#fb4934")
       evil-visual-state-cursor '(hollow "#fe8019"))
-#+end_src
 
-** Evil Escape
-#+begin_src emacs-lisp
 (after! evil-escape
   (setq evil-escape-key-sequence "jk"
         evil-escape-delay 0.2
         evil-escape-excluded-modes '(dired-mode)))
-#+end_src
 
-** Yank/Change operations
-#+begin_src emacs-lisp
 (after! evil-goggles
   (setq evil-goggles-duration 0.1))
-#+end_src
 
-** Move by visual lines, not logical lines
-#+begin_src emacs-lisp
 (map! :map evil-normal-state-map
       "j" #'evil-next-visual-line
       "k" #'evil-previous-visual-line)
-#+end_src
 
-** Vertico
-#+begin_src emacs-lisp
 (after! vertico
   (setq vertico-count 10
         vertico-cycle t))
-#+end_src
 
-** Consult
-#+begin_src emacs-lisp
 (after! consult
   ;; Use fd and rg for faster searching, from vanilla config
   (setq consult-find-args "fd --hidden --strip-cwd --type f --color=never"
         consult-ripgrep-args "rg --null --line-buffered --color=never --smart-case --no-heading --line-number --hidden --glob '!.git/'"))
-#+end_src
 
-** Integration for searching and inserting snippets
-#+begin_src emacs-lisp
 (use-package! consult-yasnippet
   :after (consult yasnippet)
   :config
@@ -149,10 +92,7 @@
 
 (map! :leader
       :desc "Search snippets" "s y" #'consult-yasnippet)
-#+end_src
 
-** Vterm
-#+begin_src emacs-lisp
 ;; Kill buffer on emacs exit
 (setq vterm-kill-buffer-on-exit t)
 
@@ -180,10 +120,7 @@
       :desc "Toggle vterm locally"  "v t" #'+vterm/toggle
       :desc "Open vterm buffer locally" "v T" #'+vterm/here
       :desc "Force kill current vterm buffer" "o k" #'+my/vterm-force-kill-current-buffer)
-#+end_src
 
-** Marginalia - Files Improvement
-#+begin_src emacs-lisp
 (after! marginalia
   (setq marginalia-censor-variables nil)
 
@@ -217,18 +154,12 @@
                       (doom-blend 'orange 'green size-index)
                     (doom-blend 'red 'orange (- size-index 1)))))
       (propertize (file-size-human-readable size) 'face (list :foreground color)))))
-#+end_src
 
-** Info Colors
-#+begin_src emacs-lisp
 (use-package! info-colors
   :after info
   :commands (info-colors-fontify-node)
   :hook (Info-selection . info-colors-fontify-node))
-#+end_src
 
-** Spell Checking
-#+begin_src emacs-lisp
 (use-package! jinx
   :defer t
   :hook ((text-mode . jinx-mode)
@@ -264,10 +195,7 @@
   (after! vertico
     (when (boundp 'vertico-multiform-categories)
       (add-to-list 'vertico-multiform-categories '(jinx (vertico-grid-annotate . t))))))
-#+end_src
 
-* PDF Tools
-#+begin_src emacs-lisp
 (after! pdf-tools
   (setq pdf-view-midnight-colors (cons (doom-color 'bg) (doom-color 'fg)))
   (set-face-attribute 'pdf-view-highlight-face nil :background (doom-color 'cyan))
@@ -305,19 +233,12 @@
         :n "o"       #'pdf-outline
         ;; SyncTeX (for LaTeX integration)
         :n "gs"      #'pdf-sync-forward-search)) ; mnemonic: go source
-#+end_src
 
-* File Management
-** Dired
-#+begin_src emacs-lisp
 (after! dired
   ;; Omit files like in the vanilla config
   (setq dired-omit-files "^\\.[^.]\\|^#\\|^\\.$\\|^\\.\\.$\\|\\.pyc$\\|\\.o$")
   (setq dired-listing-switches "-agho --group-directories-first"))
-#+end_src
 
-** Dirvish
-#+begin_src emacs-lisp
 (after! dirvish
   ;; Set quick access directories from vanilla config
   (setq dirvish-quick-access-entries
@@ -327,11 +248,7 @@
           ("p" "~/Projects/" "Projects")
           ("/" "/" "Root")))
   (setq dirvish-attributes '(nerd-icons file-time file-size collapse subtree-state vc-state)))
-#+end_src
 
-* Org Mode
-** Fonts Setup
-#+begin_src emacs-lisp
 (defun ar/org-font-setup ()
   ;; Set faces for heading levels
   (dolist (face '((org-level-1 . 1.2)
@@ -353,10 +270,7 @@
   (set-face-attribute 'org-special-keyword nil :inherit '(font-lock-comment-face fixed-pitch))
   (set-face-attribute 'org-meta-line nil :inherit '(font-lock-comment-face fixed-pitch))
   (set-face-attribute 'org-checkbox nil :inherit 'fixed-pitch))
-#+end_src
 
-** Core Setup
-#+begin_src emacs-lisp
 (defun ar/org-setup-hook ()
   "Modes to enable on org-mode start"
   (org-indent-mode)
@@ -373,10 +287,7 @@
         org-auto-align-tags nil)
 
   (add-hook! org-mode #'ar/org-setup-hook))
-#+end_src
 
-** Org Structure Templates
-#+begin_src emacs-lisp
 (use-package! org-tempo
   :after org
   :config
@@ -386,24 +297,15 @@
   (add-to-list 'org-structure-template-alist '("sh" . "src shell"))
   (add-to-list 'org-structure-template-alist '("py" . "src python"))
   (add-to-list 'org-structure-template-alist '("el" . "src emacs-lisp")))
-#+end_src
 
-** Use visual-fill to center org text
-#+begin_src emacs-lisp
 (use-package! visual-fill-column
   :hook (org-mode . visual-fill-column-mode)
   :custom
   (visual-fill-column-width 100)
   (visual-fill-column-center-text t))
-#+end_src
 
-** Prettier pop-up for capture templates
-#+begin_src emacs-lisp
 (setf (alist-get 'height +org-capture-frame-parameters) 15)
-#+end_src
 
-** Org TODO Keywords
-#+begin_src emacs-lisp
 (after! org
   (setq org-todo-keywords
         '((sequence "☛ TODO(t)" "⚡ NEXT(n)" "🔄 PROG(p)" "⏳ WAIT(w@/!)" "|" "✅ DONE(d!)" "❌ CANCELLED(c@)")
@@ -420,10 +322,7 @@
           ("⏸ PAUSED" . (:foreground "#7c6f64" :weight bold))
           ("🏆 ACHIEVED" . (:foreground "#689d6a" :weight bold))
           ("🚫 DROPPED" . (:foreground "#665c54" :weight bold)))))
-#+end_src
 
-** Org Modern
-#+begin_src emacs-lisp
 (after! org-modern
   (setq org-modern-star '("◉" "○" "◈" "◇" "◆" "▷")
         org-modern-hide-stars "· "
@@ -435,25 +334,15 @@
         org-modern-tag-faces `((:foreground ,(face-attribute 'default :foreground) :weight bold :box (:line-width (1 . -1) :color "#45475a")))
         ;; Prettier checkboxes
         org-modern-checkbox '((todo . "☐") (done . "☑") (cancel . "☒") (priority . "⚑") (on . "◉") (off . "○"))))
-#+end_src
 
-** Org Appear
-#+begin_src emacs-lisp
 (after! org-appear
   (setq org-appear-autoemphasis t
         org-appear-autolinks t
         org-appear-autosubmarkers t))
-#+end_src
 
-** Org Fragtog
-#+begin_src emacs-lisp
 (use-package! org-fragtog
   :hook (org-mode . org-fragtog-mode))
-#+end_src
 
-** ☛ TODO Org Capture
-*Adapt this setup into elken's setup. See what gemini gives you*
-#+begin_src emacs-lisp
 (after! org-capture
   (setq org-capture-templates
         (doct `(;; Main Capture Options
@@ -543,10 +432,7 @@
                             "%i"
                             "#+END_QUOTE"
                             "%?"))))))
-#+end_src
 
-** Org Roam
-#+begin_src emacs-lisp
 (after! org-roam
   (setq org-roam-directory (expand-file-name "roam" org-directory))
   (setq org-roam-db-location (expand-file-name ".org-roam.db" org-roam-directory))
@@ -581,10 +467,7 @@
         org-roam-ui-follow t
         org-roam-ui-update-on-save t
         org-roam-ui-open-on-start nil))
-#+end_src
 
-** Org Agenda with Super Agenda
-#+begin_src emacs-lisp
 (after! org-agenda
   (setq org-agenda-files (list org-directory (expand-file-name "roam" org-directory)))
   (setq org-agenda-skip-scheduled-if-done t
@@ -622,10 +505,7 @@
         (:name "🔄 Habits" :tag "habit")
         (:name "⏳ Waiting" :todo "WAIT")
         (:discard (:anything t))))
-#+end_src
 
-** Archive/Cleanup
-#+begin_src emacs-lisp
 (setq org-archive-location "archive/Archive_%s::")
 
 (defun ar/org-archive-done-tasks ()
@@ -649,11 +529,7 @@
    "/KILL" 'file))
 
 (map! :map org-mode-map :desc "Remove tasks marked as KILL" "C-c DEL k" #'ar/org-remove-kill-tasks)
-#+end_src
 
-* Markdown
-** Core
-#+begin_src emacs-lisp
 (use-package! markdown-mode
   ;; These modes will run automatically whenever you open a markdown file.
   :hook ((markdown-mode . visual-line-mode)   ; Enable soft-wrapping for readability.
@@ -662,29 +538,19 @@
   ;; Use grip for a GitHub-like preview in the browser.
   (setq markdown-command "grip"))
 
-#+end_src
-
-** Preview
-#+begin_src emacs-lisp
 (use-package! vmd-mode
   :config
   ;; Configure the appearance of the live preview pane.
   ;; Other themes: 'gfm', 'neutron', 'classic'.
   (setq vmd-theme "github")
   (setq vmd-show-sidebar nil)) ; Hides the VMD navigation sidebar for a cleaner look.
-#+end_src
 
-** Table of Contents
-#+begin_src emacs-lisp
 (use-package! markdown-toc
   :config
   ;; Automatically update the Table of Contents when the file is saved.
   ;; This hook is smart and only runs if a TOC already exists.
   (add-hook 'before-save-hook #'markdown-toc-refresh-toc-in-buffer-only-if-dirty))
-#+end_src
 
-** Keybindings
-#+begin_src emacs-lisp
 (map! :leader
       :map markdown-mode-map
       :prefix ("m" . "Markdown")
@@ -716,10 +582,6 @@
       "]t" '(markdown-next-table :wk "Next Table")
       "[t" '(markdown-previous-table :wk "Previous Table"))
 
-#+end_src
-
-* Python
-#+begin_src emacs-lisp
 ;;;; ------------------------------------------------------------------
 ;;;; PYTHON CONFIGURATION (FINALIZED)
 ;;;; ------------------------------------------------------------------
@@ -842,23 +704,10 @@
         :prefix ("t" . "test")
         "f" '(dap-pytest-run :wk "Run tests in file")
         "p" #'(lambda () (interactive) (dap-debug "Python: Debug Pytest Project"))))
-#+end_src
 
-* Writing
-** Citation and Bibliography
-1. In Zotero, install the "Better BibTeX for Zotero" plugin.
-2. Configure it to auto-export your library to a single .bib file.
-   (e.g., `~/org/roam/bibliography.bib`)
-3. This configuration points all Emacs tools to that single, auto-syncing file.
-
-*** Directory
-#+begin_src emacs-lisp
 (defvar my-bib-file (expand-file-name "roam/bibliography.bib" org-directory)
   "The absolute path to the bibliography file auto-exported by Zotero.")
-#+end_src
 
-*** Citar Configuration
-#+begin_src emacs-lisp
 (after! citar
   (setq citar-bibliography (list my-bib-file))
   (setq citar-notes-paths (list (expand-file-name "roam/notes/" org-directory)))
@@ -872,18 +721,10 @@
           (note ,(nerd-icons-octicon "nf-oct-note" :face 'nerd-icons-yellow) . " ")
           (link ,(nerd-icons-octicon "nf-oct-link" :face 'nerd-icons-blue) . " "))))
 
-#+end_src
-
-*** Org Roam Integration
-#+begin_src emacs-lisp
 (after! org-roam
   (require 'citar-org-roam)
   (citar-org-roam-mode))
-#+end_src
 
-** LaTeX Engine and LSP
-*** AUCTeX & Tectonic
-#+begin_src emacs-lisp
 (after! tex
   (setq-default TeX-engine 'tectonic)
   (setq TeX-view-program-selection '((output-pdf "PDF Tools")))
@@ -902,10 +743,7 @@
             (lambda ()
               (outline-minor-mode)
               (rainbow-delimiters-mode))))
-#+end_src
 
-*** LSP Configuration
-#+begin_src emacs-lisp
 (after! lsp-mode
   ;; Register texlab as a client for lsp-mode
   (lsp-register-client
@@ -923,20 +761,13 @@
             (:forwardSearch
              (:executable "zathura")
              (:args ["--synctex-forward" "%LINE%:%COLUMN%" "%PDF%"]))))))
-#+end_src
 
-** Core Writing Experience and Programmatic Snippets
-*** UI Enhancements
-#+begin_src emacs-lisp
 (setq +zen-mixed-pitch-modes '(org-mode LaTeX-mode markdown-mode))
 (dolist (hook +zen-mixed-pitch-modes)
   (add-hook (intern (concat (symbol-name hook) "-hook")) #'mixed-pitch-mode))
 (add-hook 'org-mode-hook #'org-fragtog-mode)
 (after! laas (add-hook 'LaTeX-mode-hook #'laas-mode))
-#+end_src
 
-*** Programmatic Snippet Generation
-#+begin_src emacs-lisp
 (after! yasnippet
   (let* (;; --- Source Lists for Snippet Generation ---
          (greek-alphabet
@@ -996,12 +827,7 @@
        ;; Theorem-like environments (e.g., Bthm -> \begin{theorem})
        (mapcar (lambda (e) `(,(concat "B" (car e)) ,(format "\\begin{%s}\n  $0\n\\end{%s}" (cdr e) (cdr e))))
                theorem-environments)))))
-#+end_src
 
-** Advanced Org-Mode Export and Project Utilities
-*** Project-specific utilities
-
-#+begin_src emacs-lisp
 (defun my/latex-find-project-packages ()
   "Find all .sty files in the project's 'styles' directory or parent directories."
   (let ((search-dirs '("./styles/" "../styles/" "./" "../")))
@@ -1034,10 +860,7 @@
   "Insert #+LATEX_HEADER lines for local .sty files."
   (interactive)
   (my/latex-insert-project-packages "#+LATEX_HEADER: \\usepackage{%s}"))
-#+end_src
 
-*** Dynamic Org Export Preamble System
-#+begin_src emacs-lisp
 (after! ox-latex
   (setq org-latex-listings 'engraved)
   (setq org-latex-pdf-process '("tectonic -Z shell-escape --outdir=%o %f"))
@@ -1103,10 +926,7 @@
 \\newtcolorbox{success}{colback=green!10,colframe=green!70!black,title=Success}
 \\newtcolorbox{error}{colback=red!10,colframe=red!70!black,title=Error}"
                  ("\\section{%s}" . "\\section*{%s}"))))
-#+end_src
 
-** Keybindings
-#+begin_src emacs-lisp
 (map! :leader
       :map latex-mode-map
       :prefix ("m" . "latex")
@@ -1129,38 +949,17 @@
       :map org-mode-map
       :prefix ("m" . "org")
       "p" '(my/latex-insert-packages-org :wk "Insert Project Packages"))
-#+end_src
 
-* Magit
-** Forge
-#+begin_src emacs-lisp
 (setq forge-owned-accounts '(("aahsnr")))
-#+end_src
 
-* Misc
-** Cucumber
-
-#+begin_src emacs-lisp
 (use-package! feature-mode
   :mode "\\.feature$")
-#+end_src
 
-** Systemd
-
-#+begin_src emacs-lisp
 (use-package! systemd
   :mode "\\.service$")
-#+end_src
 
-** RPM Spec
-
-#+begin_src emacs-lisp
 ;; (use-package! rpm-spec-mode
 ;;   :mode "\\.spec\\(\\.in\\)?$")
-#+end_src
 
-** M-x
-#+begin_src emacs-lisp
 (map! :leader
       :desc "Open like spacemacs" "SPC" #'execute-extended-command)
-#+end_src
